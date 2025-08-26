@@ -1,15 +1,36 @@
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
+import { Text, View } from 'react-native';
 
 export default function HomeScreen() {
   return (
-    <ThemedView className="flex-1 justify-center items-center p-5">
-      <ThemedText type="title" className="text-center mb-4">
+    <View
+      style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+        backgroundColor: 'white',
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 28,
+          fontWeight: 'bold',
+          textAlign: 'center',
+          marginBottom: 16,
+          color: 'black',
+        }}
+      >
         한자 앱 입니다
-      </ThemedText>
-      <ThemedText className="text-lg text-gray-600 text-center">
+      </Text>
+      <Text
+        style={{
+          fontSize: 18,
+          color: '#666666',
+          textAlign: 'center',
+        }}
+      >
         한자 학습을 시작해보세요! 🇰🇷
-      </ThemedText>
-    </ThemedView>
+      </Text>
+    </View>
   );
 }
