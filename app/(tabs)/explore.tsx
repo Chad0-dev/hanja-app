@@ -1,22 +1,18 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { StyleSheet } from "react-native";
 
 export default function TabTwoScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">탐색</ThemedText>
-      <ThemedText>한자 학습을 위한 탐색 페이지입니다.</ThemedText>
+    <ThemedView className="flex-1 justify-center items-center p-5">
+      <ThemedText type="title" className="text-center mb-6">
+        탐색
+      </ThemedText>
+      <ThemedText className="text-base text-center leading-6">
+        한자 학습을 위한 탐색 페이지입니다.
+      </ThemedText>
+      <ThemedText className="text-sm text-gray-500 text-center mt-4">
+        곧 다양한 학습 기능들이 추가될 예정입니다! ✨
+      </ThemedText>
     </ThemedView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    gap: 20,
-  },
-});
