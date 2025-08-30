@@ -1,18 +1,32 @@
-// 한자 관련 타입 정의
-export interface HanjaCharacter {
+// 한자 급수 타입 정의
+export type HanjaGrade = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+// 한자 단어 카드 타입 정의 (개선됨)
+export interface HanjaWordCard {
   id: string;
-  character: string; // 한자
-  pronunciation: string; // 음독
-  meaning: string; // 뜻
-  level: number; // 급수 (1~8급)
-  strokeCount: number; // 획수
-  examples: HanjaExample[]; // 예시 단어들
+  word: string; // 한자 단어 (예: "天地")
+  pronunciation: string; // 발음 (예: "천지")
+  meaning: string; // 단어 뜻 (예: "하늘과 땅")
+  characters: HanjaCharacter[]; // 구성 한자들
+  grade: HanjaGrade; // 급수 (8급이 가장 쉬움, 1급이 가장 어려움)
+  isMemorized: boolean; // 암기 완료 여부
+  relatedWords: {
+    leftSwipe: string[]; // 첫 번째 한자 관련 단어 IDs
+    rightSwipe: string[]; // 두 번째 한자 관련 단어 IDs
+  };
 }
 
-export interface HanjaExample {
-  word: string; // 한자 단어
-  pronunciation: string; // 발음
-  meaning: string; // 뜻
+// 개별 한자 정보 타입 (간소화됨)
+export interface HanjaCharacter {
+  id: string;
+  character: string; // 한자 (예: "天")
+  pronunciation: string; // 음독 (예: "천")
+  meaning: string; // 뜻 (예: "하늘")
+  strokeCount: number; // 획수
+  radical: string; // 부수 (예: "大")
+  radicalName: string; // 부수 이름 (예: "큰대")
+  radicalStrokes: number; // 부수 획수
+  // examples 제거 - character 기반으로 자동 연결
 }
 
 // 학습 진도 관련 타입
@@ -25,20 +39,21 @@ export interface StudyProgress {
   wrongCount: number;
 }
 
-// 검색 필터 타입
+// 검색 필터 타입 (개선됨)
 export interface SearchFilter {
-  level?: number[];
+  grade?: HanjaGrade[]; // 급수별 필터링
   strokeCount?: {
     min: number;
     max: number;
   };
-  searchType: "character" | "pronunciation" | "meaning";
+  memorized?: boolean; // 암기 상태별 필터링
+  searchType: 'character' | 'pronunciation' | 'meaning';
 }
 
 // 앱 상태 타입
 export interface AppState {
   currentUser: string | null;
-  theme: "light" | "dark";
+  theme: 'light' | 'dark';
   studySettings: StudySettings;
 }
 
@@ -46,5 +61,7 @@ export interface StudySettings {
   dailyGoal: number;
   showPronunciation: boolean;
   showMeaning: boolean;
-  reviewMode: "spaced" | "random";
+  reviewMode: 'spaced' | 'random';
 }
+
+// 제스처 관련 타입들은 현재 사용하지 않음 (삭제됨)

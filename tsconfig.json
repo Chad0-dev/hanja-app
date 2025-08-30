@@ -6,12 +6,11 @@
       "@/*": ["./*"],
       "@/src/*": ["./src/*"],
       "@/components/*": ["./src/components/*"],
-      "@/screens/*": ["./src/screens/*"],
       "@/hooks/*": ["./src/hooks/*"],
-      "@/utils/*": ["./src/utils/*"],
       "@/types/*": ["./src/types/*"],
       "@/stores/*": ["./src/stores/*"],
       "@/data/*": ["./src/data/*"],
+      "@/database/*": ["./src/database/*"],
       "@/constants/*": ["./src/constants/*"]
     }
   },
