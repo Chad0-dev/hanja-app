@@ -9,7 +9,13 @@ import {
   getWordsByGrade,
   initializeDatabase,
 } from '../database/hanjaDB';
-import { HanjaGrade, HanjaWordCard, StudyProgress } from '../types';
+import { CardHistoryManager, processGoBack } from '../hooks/useCardHistory';
+import {
+  CardHistoryItem,
+  HanjaGrade,
+  HanjaWordCard,
+  StudyProgress,
+} from '../types';
 
 interface AppState {
   // 카드 스택 관리
@@ -17,6 +23,10 @@ interface AppState {
   currentCardIndex: number;
   currentCard: HanjaWordCard | null;
   isLoading: boolean;
+
+  // 뒤로가기 기능을 위한 히스토리 관리 (스와이프 방향 포함)
+  cardHistory: CardHistoryItem[];
+  canGoBack: boolean;
 
   // 학습 추적 (index.tsx에서 사용)
   studiedCardIds: string[];
@@ -32,6 +42,9 @@ interface AppState {
   // 데이터베이스 상태
   isDbInitialized: boolean;
 
+  // 역방향 애니메이션 트리거 콜백 (스와이프 방향 포함)
+  reverseAnimationTrigger: ((direction: 'left' | 'right') => void) | null;
+
   // 카드 스택 관리 액션들
   initializeCardStack: () => Promise<void>;
   moveToNextCard: () => void;
@@ -41,6 +54,14 @@ interface AppState {
   // 스와이프 액션들
   swipeLeft: () => void;
   swipeRight: () => void;
+
+  // 뒤로가기 액션
+  goBackToPreviousCard: () => void;
+
+  // 역방향 애니메이션 트리거 콜백 (스와이프 방향 포함)
+  setReverseAnimationTrigger: (
+    callback: (direction: 'left' | 'right') => void
+  ) => void;
 
   // 학습 진도 액션들
   recordAnswer: (characterId: string, isCorrect: boolean) => void;
@@ -73,12 +94,15 @@ export const useAppStore = create<AppState>()(
       currentCardIndex: 0,
       currentCard: null,
       isLoading: false,
+      cardHistory: [],
+      canGoBack: false,
       studiedCardIds: [],
       savedCardIds: [],
       studyProgress: [],
       selectedGrade: 8, // 기본값을 8급으로 설정
       studyMode: 'sequential',
       isDbInitialized: false,
+      reverseAnimationTrigger: null,
 
       // 카드 스택 관리
       initializeCardStack: async () => {
@@ -170,13 +194,23 @@ export const useAppStore = create<AppState>()(
 
       // 스와이프 액션들
       swipeLeft: () => {
-        const { currentCard } = get();
+        const { currentCard, cardHistory } = get();
         if (currentCard) {
           console.log(`👈 왼쪽 스와이프 - ${currentCard.word} 학습 완료`);
+
+          // 히스토리 매니저를 사용하여 히스토리 관리
+          const limitedHistory = CardHistoryManager.addToHistory(
+            cardHistory,
+            currentCard,
+            'left',
+            10
+          );
 
           // 학습한 카드 ID 추가
           set(state => ({
             studiedCardIds: [...state.studiedCardIds, currentCard.id],
+            cardHistory: limitedHistory,
+            canGoBack: limitedHistory.length > 0,
           }));
         }
 
@@ -184,17 +218,72 @@ export const useAppStore = create<AppState>()(
       },
 
       swipeRight: () => {
-        const { currentCard } = get();
+        const { currentCard, cardHistory } = get();
         if (currentCard) {
           console.log(`👉 오른쪽 스와이프 - ${currentCard.word} 저장`);
+
+          // 히스토리 매니저를 사용하여 히스토리 관리
+          const limitedHistory = CardHistoryManager.addToHistory(
+            cardHistory,
+            currentCard,
+            'right',
+            10
+          );
 
           // 저장한 카드 ID 추가
           set(state => ({
             savedCardIds: [...state.savedCardIds, currentCard.id],
+            cardHistory: limitedHistory,
+            canGoBack: limitedHistory.length > 0,
           }));
         }
 
         get().moveToNextCard();
+      },
+
+      // 뒤로가기 액션 (개선된 버전)
+      goBackToPreviousCard: () => {
+        const { cardHistory, cardStack, reverseAnimationTrigger } = get();
+
+        // processGoBack 함수를 사용하여 뒤로가기 로직 처리
+        const result = processGoBack(cardHistory, cardStack);
+
+        console.log(result.message);
+
+        if (!result.success) {
+          return;
+        }
+
+        console.log(
+          `⬅️ 이전 카드로 돌아가기: ${result.previousCard.word} (${result.swipeDirection} 스와이프로 사라짐)`
+        );
+
+        // 역방향 애니메이션 트리거
+        if (reverseAnimationTrigger && result.swipeDirection) {
+          reverseAnimationTrigger(result.swipeDirection);
+        }
+
+        // 상태 업데이트
+        const updateData: any = {
+          currentCard: result.previousCard,
+          cardHistory: result.newHistory,
+          canGoBack: result.newHistory.length > 0,
+        };
+
+        if (result.newCardStack) {
+          updateData.cardStack = result.newCardStack;
+        }
+
+        if (result.newCardIndex !== undefined) {
+          updateData.currentCardIndex = result.newCardIndex;
+        }
+
+        set(updateData);
+      },
+
+      // 역방향 애니메이션 트리거 콜백 설정
+      setReverseAnimationTrigger: callback => {
+        set({ reverseAnimationTrigger: callback });
       },
 
       // 학습 진도 관리

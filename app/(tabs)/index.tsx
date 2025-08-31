@@ -1,9 +1,14 @@
-import { CardDeck, HamburgerMenu } from '@/src/components';
+import { CardDeck, DragonCharacter, HamburgerMenu } from '@/src/components';
 import { useAppStore } from '@/src/stores/useAppStore';
 import React, { useEffect } from 'react';
-import { Image, ImageBackground, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, StyleSheet, Text, View } from 'react-native';
 
 export default function HomeScreen() {
+  const [shouldPlayReverse, setShouldPlayReverse] = React.useState(false);
+  const [reverseDirection, setReverseDirection] = React.useState<
+    'left' | 'right'
+  >('right');
+
   // Zustand 스토어에서 상태와 액션들 가져오기
   const {
     currentCard,
@@ -15,7 +20,16 @@ export default function HomeScreen() {
     initializeCardStack,
     swipeLeft,
     swipeRight,
+    setReverseAnimationTrigger,
   } = useAppStore();
+
+  // 역방향 애니메이션 트리거 콜백 설정 (스와이프 방향 포함)
+  useEffect(() => {
+    setReverseAnimationTrigger((direction: 'left' | 'right') => {
+      setReverseDirection(direction);
+      setShouldPlayReverse(true);
+    });
+  }, [setReverseAnimationTrigger]);
 
   // 현재 카드부터 시작하는 카드 배열 생성 (CardDeck이 변화를 감지할 수 있도록)
   // 성능 최적화: 최대 3장만 생성 (CardDeck에서 2장만 사용하지만 여유분 포함)
@@ -99,13 +113,15 @@ export default function HomeScreen() {
                 onSwipeLeft={handleSwipeLeft}
                 onSwipeRight={handleSwipeRight}
                 maxVisibleCards={3} // 3장 렌더링 (3번째는 투명)
+                shouldPlayReverseAnimation={shouldPlayReverse}
+                reverseDirection={reverseDirection}
+                onReverseAnimationComplete={() => setShouldPlayReverse(false)}
               />
 
-              {/* Dragon 이미지 - 카드 아래 장식 */}
-              <Image
-                source={require('@/assets/images/Dragon.png')}
-                style={styles.dragonImage}
-                resizeMode="contain"
+              {/* Dragon 캐릭터 - 카드 변화에 따라 변함 */}
+              <DragonCharacter
+                cardIndex={currentCardIndex}
+                style={styles.dragonCharacter}
               />
 
               {/* 디버깅 정보 (개발 중에만 표시) */}
@@ -161,11 +177,9 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
   },
-  dragonImage: {
-    width: 120,
-    height: 120,
+  dragonCharacter: {
     marginTop: 30,
-    opacity: 0.7,
+    opacity: 0.8,
     alignSelf: 'center',
   },
 });

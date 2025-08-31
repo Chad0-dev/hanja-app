@@ -202,6 +202,60 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = ({
     };
   });
 
+  /**
+   * 좌측 연관단어 하이라이트 애니메이션
+   */
+  const leftHighlightStyle = useAnimatedStyle(() => {
+    const isActive = translateX.value < -50; // 왼쪽으로 50px 이상 스와이프 시 활성화
+
+    return {
+      backgroundColor: isActive
+        ? 'rgba(200, 200, 200, 0.9)'
+        : 'rgba(0, 0, 0, 0)',
+      // transform 제거 - 정렬 안정성을 위해
+      borderRadius: 12,
+      paddingHorizontal: 6, // 고정값으로 변경
+      paddingVertical: 3, // 고정값으로 변경
+    };
+  });
+
+  /**
+   * 우측 연관단어 하이라이트 애니메이션
+   */
+  const rightHighlightStyle = useAnimatedStyle(() => {
+    const isActive = translateX.value > 50; // 오른쪽으로 50px 이상 스와이프 시 활성화
+
+    return {
+      backgroundColor: isActive
+        ? 'rgba(200, 200, 200, 0.9)'
+        : 'rgba(0, 0, 0, 0)',
+      // transform 제거 - 정렬 안정성을 위해
+      borderRadius: 12,
+      paddingHorizontal: 6, // 고정값으로 변경
+      paddingVertical: 3, // 고정값으로 변경
+    };
+  });
+
+  /**
+   * 좌측 텍스트 색상 애니메이션
+   */
+  const leftTextStyle = useAnimatedStyle(() => {
+    return {
+      color: translateX.value < -50 ? '#333333' : '#999',
+      // fontWeight 제거 - 높이 차이 방지
+    };
+  });
+
+  /**
+   * 우측 텍스트 색상 애니메이션
+   */
+  const rightTextStyle = useAnimatedStyle(() => {
+    return {
+      color: translateX.value > 50 ? '#333333' : '#999',
+      // fontWeight 제거 - 높이 차이 방지
+    };
+  });
+
   // 애니메이션 스타일 제거 - 크래시 방지를 위한 단순화
 
   /**
@@ -249,19 +303,6 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = ({
   return (
     <PanGestureHandler onGestureEvent={gestureHandler}>
       <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
-        {/* 액션 인디케이터들 */}
-        <Animated.View
-          style={[styles.actionIndicator, styles.leftAction, leftActionStyle]}
-        >
-          <Text style={styles.actionText}>❌</Text>
-        </Animated.View>
-
-        <Animated.View
-          style={[styles.actionIndicator, styles.rightAction, rightActionStyle]}
-        >
-          <Text style={styles.actionText}>✅</Text>
-        </Animated.View>
-
         {/* 단순한 조건부 렌더링 - 크래시 방지 */}
         {!isFlipped ? (
           /* 앞면 카드 - 한자 단어만 표시 */
@@ -274,6 +315,34 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = ({
               <Text style={styles.hanjaText}>{card.word}</Text>
               <Text style={styles.tapHint}>탭하여 뒤집기</Text>
             </TouchableOpacity>
+
+            {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
+            <Animated.View
+              style={[
+                styles.swipeIndicator,
+                styles.leftSwipeIndicator,
+                leftHighlightStyle,
+              ]}
+            >
+              <Animated.Text style={[styles.swipeIndicatorText, leftTextStyle]}>
+                {card.characters[0]?.character} 연관단어
+              </Animated.Text>
+            </Animated.View>
+
+            <Animated.View
+              style={[
+                styles.swipeIndicator,
+                styles.rightSwipeIndicator,
+                rightHighlightStyle,
+              ]}
+            >
+              <Animated.Text
+                style={[styles.swipeIndicatorText, rightTextStyle]}
+              >
+                {card.characters[1]?.character || card.characters[0]?.character}{' '}
+                연관단어
+              </Animated.Text>
+            </Animated.View>
           </View>
         ) : (
           /* 뒷면 카드 - 발음, 뜻, 구성 한자 정보 */
@@ -292,7 +361,7 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = ({
                 {card.characters.map((char, index) => (
                   <View key={char.id} style={styles.characterInfo}>
                     <Text style={styles.characterText}>
-                      {char.character} ({char.pronunciation}): {char.meaning}
+                      {char.character} {char.meaning} {char.pronunciation}
                     </Text>
                     <Text style={styles.characterDetails}>
                       {char.strokeCount}획, {char.radicalName}({char.radical})
@@ -303,6 +372,34 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = ({
 
               <Text style={styles.tapHint}>탭하여 뒤집기</Text>
             </TouchableOpacity>
+
+            {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
+            <Animated.View
+              style={[
+                styles.swipeIndicator,
+                styles.leftSwipeIndicator,
+                leftHighlightStyle,
+              ]}
+            >
+              <Animated.Text style={[styles.swipeIndicatorText, leftTextStyle]}>
+                {card.characters[0]?.character} 연관단어
+              </Animated.Text>
+            </Animated.View>
+
+            <Animated.View
+              style={[
+                styles.swipeIndicator,
+                styles.rightSwipeIndicator,
+                rightHighlightStyle,
+              ]}
+            >
+              <Animated.Text
+                style={[styles.swipeIndicatorText, rightTextStyle]}
+              >
+                {card.characters[1]?.character || card.characters[0]?.character}{' '}
+                연관단어
+              </Animated.Text>
+            </Animated.View>
           </View>
         )}
       </Animated.View>
@@ -322,16 +419,16 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#f8f6f2', // 따뜻한 오프화이트
     borderRadius: 20,
-    shadowColor: '#000000',
+    shadowColor: '#8B7355', // 배경과 어울리는 따뜻한 갈색 그림자
     shadowOffset: {
       width: 0,
-      height: 8,
+      height: 6,
     },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 25,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 15,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
+    borderColor: 'rgba(139, 115, 85, 0.1)', // 그림자 색상과 매칭되는 테두리
     overflow: 'hidden',
     position: 'relative',
   },
@@ -352,7 +449,7 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   hanjaText: {
-    fontSize: 80,
+    fontSize: 90,
     fontWeight: 'bold',
     color: '#222',
     textAlign: 'center',
@@ -398,7 +495,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   characterText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#333',
     textAlign: 'center',
     fontWeight: '600',
@@ -415,24 +512,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 16,
+    height: 16, // 고정 높이
   },
-  actionIndicator: {
+  swipeIndicator: {
     position: 'absolute',
-    top: 20,
-    zIndex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    bottom: 20,
+    fontSize: 12,
+    color: '#999',
+    height: 16, // 고정 높이
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  leftAction: {
+  leftSwipeIndicator: {
     left: 20,
   },
-  rightAction: {
+  rightSwipeIndicator: {
     right: 20,
   },
-  actionText: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  swipeIndicatorText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 16, // 고정 라인 높이로 일관된 정렬
+    height: 16, // 고정 높이
   },
 });

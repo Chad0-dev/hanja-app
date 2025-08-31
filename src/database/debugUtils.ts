@@ -1,3 +1,4 @@
+import { migrateDataToSQLite } from './dataMigration';
 import { initializeDatabase } from './hanjaDB';
 
 /**
@@ -64,26 +65,18 @@ export const logDatabaseStatus = async (): Promise<void> => {
 };
 
 /**
- * 특정 급수의 모든 단어 출력
+ * 특정 급수의 단어 개수만 확인 (간소화)
  */
-export const logWordsForGrade = async (grade: number): Promise<void> => {
+export const checkGradeCount = async (grade: number): Promise<void> => {
   try {
     const db = await initializeDatabase();
-
-    const words = await db.getAllAsync(
-      'SELECT word, pronunciation, meaning, isMemorized FROM words WHERE grade = ? ORDER BY word',
+    const result = await db.getFirstAsync(
+      'SELECT COUNT(*) as count FROM words WHERE grade = ?',
       [grade]
     );
-
-    console.log(`📚 ${grade}급 한자 단어 (${words.length}개):`);
-    words.forEach((row: any, index: number) => {
-      const status = row.isMemorized ? '✅' : '⏳';
-      console.log(
-        `   ${index + 1}. ${status} ${row.word}(${row.pronunciation}): ${row.meaning}`
-      );
-    });
+    console.log(`📚 ${grade}급: ${(result as any)?.count}개`);
   } catch (error) {
-    console.error(`❌ ${grade}급 단어 조회 실패:`, error);
+    console.error(`❌ ${grade}급 확인 실패:`, error);
   }
 };
 
@@ -108,59 +101,75 @@ export const resetDatabase = async (): Promise<void> => {
 };
 
 /**
- * 성능 테스트
+ * 데이터베이스 완전 재초기화 (리셋 + 마이그레이션)
  */
-export const performanceTest = async (): Promise<void> => {
+export const resetAndMigrate = async (): Promise<void> => {
   try {
-    const db = await initializeDatabase();
+    console.log('🔄 데이터베이스 완전 재초기화 시작...');
 
-    console.log('⚡ 성능 테스트 시작...');
+    // 1. 데이터베이스 리셋
+    await resetDatabase();
 
-    const startTime = Date.now();
+    // 2. 새로운 데이터 마이그레이션
+    console.log('📦 새로운 데이터 마이그레이션 시작...');
+    await migrateDataToSQLite();
 
-    // 급수별 조회 테스트
-    for (let grade = 8; grade >= 1; grade--) {
-      await db.getAllAsync(
-        'SELECT COUNT(*) as count FROM words WHERE grade = ?',
-        [grade]
-      );
-    }
-
-    // 복잡한 조인 쿼리 테스트
-    const result = await db.getAllAsync(`
-      SELECT w.word, c.character 
-      FROM words w 
-      JOIN word_characters wc ON w.id = wc.wordId 
-      JOIN characters c ON wc.characterId = c.id 
-      WHERE w.grade = 8
-    `);
-
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-    console.log(`⚡ 성능 테스트 완료: ${duration}ms`);
-    console.log(`⚡ 조회된 레코드 수: ${result.length}개`);
+    console.log('✅ 완전 재초기화 완료');
   } catch (error) {
-    console.error('❌ 성능 테스트 실패:', error);
+    console.error('❌ 완전 재초기화 실패:', error);
   }
 };
 
 /**
- * 개발자 콘솔에서 사용할 수 있는 전역 함수들 등록
+ * 특정 단어의 기본 정보만 확인 (간소화)
+ */
+export const inspectWord = async (wordId: string): Promise<void> => {
+  try {
+    const db = await initializeDatabase();
+
+    // 간단한 조인 쿼리로 핵심 정보만 확인
+    const result = await db.getAllAsync(
+      `SELECT w.word, w.pronunciation, w.meaning, 
+       GROUP_CONCAT(c.character, '') as characters
+       FROM words w
+       LEFT JOIN word_characters wc ON w.id = wc.wordId
+       LEFT JOIN characters c ON wc.characterId = c.id
+       WHERE w.id = ?
+       GROUP BY w.id`,
+      [wordId]
+    );
+
+    if (result.length > 0) {
+      const word = result[0] as any;
+      console.log(`🔍 ${word.word}(${word.pronunciation}): ${word.meaning}`);
+      console.log(`📝 구성한자: ${word.characters || '없음'}`);
+    } else {
+      console.log(`❌ '${wordId}' 단어를 찾을 수 없습니다.`);
+    }
+  } catch (error) {
+    console.error(`❌ 단어 '${wordId}' 조사 실패:`, error);
+  }
+};
+
+/**
+ * 개발자 콘솔에서 사용할 수 있는 전역 함수들 등록 (최적화)
  */
 export const registerDebugFunctions = (): void => {
   if (__DEV__) {
     // @ts-ignore
     global.hanjaDebug = {
       status: logDatabaseStatus,
-      grade: logWordsForGrade,
+      grade: checkGradeCount, // 간소화된 함수로 변경
+      inspect: inspectWord,
       reset: resetDatabase,
-      performance: performanceTest,
+      fullReset: resetAndMigrate,
     };
 
     console.log('🛠️ 디버그 함수들이 등록되었습니다:');
     console.log('   hanjaDebug.status() - 데이터베이스 상태 확인');
-    console.log('   hanjaDebug.grade(8) - 특정 급수 단어 출력');
+    console.log('   hanjaDebug.grade(8) - 특정 급수 단어 개수');
+    console.log('   hanjaDebug.inspect("method") - 특정 단어 확인');
     console.log('   hanjaDebug.reset() - 데이터베이스 리셋');
-    console.log('   hanjaDebug.performance() - 성능 테스트');
+    console.log('   hanjaDebug.fullReset() - 완전 재초기화');
   }
 };

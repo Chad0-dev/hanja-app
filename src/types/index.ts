@@ -64,4 +64,8 @@ export interface StudySettings {
   reviewMode: 'spaced' | 'random';
 }
 
-// 제스처 관련 타입들은 현재 사용하지 않음 (삭제됨)
+// 카드 히스토리 타입 (스와이프 방향 포함)
+export interface CardHistoryItem {
+  card: HanjaWordCard;
+  swipeDirection: 'left' | 'right'; // 어느 방향으로 스와이프했는지
+}

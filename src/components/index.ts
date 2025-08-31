@@ -4,6 +4,8 @@ export { ThemedView } from './ThemedView';
 
 // Interactive Components
 export { CardDeck } from './CardDeck';
+export { DeckCard } from './DeckCard';
+export { DragonCharacter } from './DragonCharacter';
 export { FlippableHanjaCard } from './FlippableHanjaCard';
 export { HamburgerMenu } from './HamburgerMenu';
 

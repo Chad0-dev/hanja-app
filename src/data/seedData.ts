@@ -1,5 +1,25 @@
 import { HanjaCharacter, HanjaWordCard } from '../types';
 
+// 한자 찾기 헬퍼 함수 (에러 방지)
+const findCharacter = (id: string): HanjaCharacter => {
+  const char = seedHanjaCharacters.find(c => c.id === id);
+  if (!char) {
+    console.error(`❌ 한자를 찾을 수 없습니다: ${id}`);
+    // 기본 한자 반환 (에러 방지용)
+    return {
+      id: id,
+      character: '?',
+      pronunciation: '?',
+      meaning: '알 수 없음',
+      strokeCount: 1,
+      radical: '?',
+      radicalName: '알 수 없음',
+      radicalStrokes: 1,
+    };
+  }
+  return char;
+};
+
 /**
  * 시드 데이터 - SQLite 데이터베이스 초기화용
  * 이 데이터는 앱 최초 실행시에만 DB에 삽입되고, 이후에는 DB에서 데이터를 조회합니다.
@@ -987,6 +1007,26 @@ export const seedHanjaCharacters: HanjaCharacter[] = [
     radical: '方',
     radicalName: '모방',
     radicalStrokes: 4,
+  },
+  {
+    id: 'beop',
+    character: '法',
+    pronunciation: '법',
+    meaning: '법',
+    strokeCount: 8,
+    radical: '氵',
+    radicalName: '삼수변',
+    radicalStrokes: 3,
+  },
+  {
+    id: 'je3',
+    character: '提',
+    pronunciation: '제',
+    meaning: '들',
+    strokeCount: 12,
+    radical: '手',
+    radicalName: '손수',
+    radicalStrokes: 3,
   },
 ];
 
@@ -2386,8 +2426,26 @@ export const seedHanjaWordCards: HanjaWordCard[] = [
     pronunciation: '철학',
     meaning: '지혜를 사랑함',
     characters: [
-      seedHanjaCharacters.find(c => c.id === 'cheol')!,
-      seedHanjaCharacters.find(c => c.id === 'hag')!,
+      {
+        id: 'cheol',
+        character: '哲',
+        pronunciation: '철',
+        meaning: '밝을',
+        strokeCount: 10,
+        radical: '口',
+        radicalName: '입구',
+        radicalStrokes: 3,
+      },
+      {
+        id: 'hag',
+        character: '學',
+        pronunciation: '학',
+        meaning: '배울',
+        strokeCount: 16,
+        radical: '子',
+        radicalName: '아들자',
+        radicalStrokes: 3,
+      },
     ],
     grade: 3,
     isMemorized: false,
@@ -2402,8 +2460,26 @@ export const seedHanjaWordCards: HanjaWordCard[] = [
     pronunciation: '사상',
     meaning: '생각과 사상',
     characters: [
-      seedHanjaCharacters.find(c => c.id === 'sa2')!,
-      seedHanjaCharacters.find(c => c.id === 'sang')!,
+      {
+        id: 'sa2',
+        character: '思',
+        pronunciation: '사',
+        meaning: '생각할',
+        strokeCount: 9,
+        radical: '心',
+        radicalName: '마음심',
+        radicalStrokes: 4,
+      },
+      {
+        id: 'sang',
+        character: '想',
+        pronunciation: '상',
+        meaning: '생각할',
+        strokeCount: 13,
+        radical: '心',
+        radicalName: '마음심',
+        radicalStrokes: 4,
+      },
     ],
     grade: 3,
     isMemorized: false,
@@ -2418,8 +2494,26 @@ export const seedHanjaWordCards: HanjaWordCard[] = [
     pronunciation: '관점',
     meaning: '보는 관점',
     characters: [
-      seedHanjaCharacters.find(c => c.id === 'gwan')!,
-      seedHanjaCharacters.find(c => c.id === 'jeom')!,
+      {
+        id: 'gwan',
+        character: '觀',
+        pronunciation: '관',
+        meaning: '볼',
+        strokeCount: 25,
+        radical: '見',
+        radicalName: '볼견',
+        radicalStrokes: 7,
+      },
+      {
+        id: 'jeom',
+        character: '點',
+        pronunciation: '점',
+        meaning: '점',
+        strokeCount: 17,
+        radical: '黑',
+        radicalName: '검을흑',
+        radicalStrokes: 12,
+      },
     ],
     grade: 3,
     isMemorized: false,
@@ -2434,8 +2528,26 @@ export const seedHanjaWordCards: HanjaWordCard[] = [
     pronunciation: '계획',
     meaning: '미리 세운 안',
     characters: [
-      seedHanjaCharacters.find(c => c.id === 'gye')!,
-      seedHanjaCharacters.find(c => c.id === 'hoek')!,
+      {
+        id: 'gye',
+        character: '計',
+        pronunciation: '계',
+        meaning: '셀',
+        strokeCount: 9,
+        radical: '言',
+        radicalName: '말씀언',
+        radicalStrokes: 7,
+      },
+      {
+        id: 'hoek',
+        character: '劃',
+        pronunciation: '획',
+        meaning: '그을',
+        strokeCount: 14,
+        radical: '刀',
+        radicalName: '칼도',
+        radicalStrokes: 2,
+      },
     ],
     grade: 3,
     isMemorized: false,
@@ -2460,7 +2572,16 @@ export const seedHanjaWordCards: HanjaWordCard[] = [
         radicalName: '손수',
         radicalStrokes: 3,
       },
-      seedHanjaCharacters.find(c => c.id === 'an')!,
+      {
+        id: 'an',
+        character: '案',
+        pronunciation: '안',
+        meaning: '책상',
+        strokeCount: 10,
+        radical: '木',
+        radicalName: '나무목',
+        radicalStrokes: 4,
+      },
     ],
     grade: 3,
     isMemorized: false,
@@ -2475,7 +2596,16 @@ export const seedHanjaWordCards: HanjaWordCard[] = [
     pronunciation: '방법',
     meaning: '방식과 법칙',
     characters: [
-      seedHanjaCharacters.find(c => c.id === 'bang')!,
+      {
+        id: 'bang',
+        character: '方',
+        pronunciation: '방',
+        meaning: '모',
+        strokeCount: 4,
+        radical: '方',
+        radicalName: '모방',
+        radicalStrokes: 4,
+      },
       {
         id: 'beop',
         character: '法',

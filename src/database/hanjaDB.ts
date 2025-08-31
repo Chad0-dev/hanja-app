@@ -183,7 +183,7 @@ export const getWordsByGrade = async (
       `SELECT w.*, 
        GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
                    c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
-                   c.radicalStrokes, '@@') as characters_data
+                   c.radicalStrokes, '@@' ORDER BY wc.position) as characters_data
        FROM words w
        LEFT JOIN word_characters wc ON w.id = wc.wordId
        LEFT JOIN characters c ON wc.characterId = c.id
@@ -229,7 +229,7 @@ export const getWordsByMemorized = async (
       `SELECT w.*, 
        GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
                    c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
-                   c.radicalStrokes, '@@') as characters_data
+                   c.radicalStrokes, '@@' ORDER BY wc.position) as characters_data
        FROM words w
        LEFT JOIN word_characters wc ON w.id = wc.wordId
        LEFT JOIN characters c ON wc.characterId = c.id
@@ -275,7 +275,7 @@ export const getWordsByCharacter = async (
       `SELECT DISTINCT w.*, 
        GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
                    c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
-                   c.radicalStrokes, '@@') as characters_data
+                   c.radicalStrokes, '@@' ORDER BY wc.position) as characters_data
        FROM words w
        JOIN word_characters wc ON w.id = wc.wordId
        JOIN characters c ON wc.characterId = c.id
