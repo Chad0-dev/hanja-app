@@ -1,0 +1,11 @@
+id,word,pronunciation,meaning,characterIds,grade,leftSwipe,rightSwipe
+one_two,一二,일이,하나 둘,one;two,8,three_four;nine_ten,three_four;five_six
+three_four,三四,삼사,셋 넷,three;four,8,one_two;five_six,five_six;seven_eight
+five_six,五六,오육,다섯 여섯,five;six,8,three_four;seven_eight,seven_eight;nine_ten
+seven_eight,七八,칠팔,일곱 여덟,seven;eight,8,five_six;nine_ten,nine_ten;one_two
+nine_ten,九十,구십,아홉 열,nine;ten,8,seven_eight;one_two,one_two;three_four
+heaven_earth,天地,천지,하늘과 땅,heaven;ground,8,sun_moon;mountain_water,sun_moon;fire_tree
+sun_moon,日月,일월,해와 달,sun;moon,8,heaven_earth;mountain_water,mountain_water;fire_tree
+mountain_water,山水,산수,산과 물,mountain;water,8,heaven_earth;sun_moon,fire_tree;gold_earth
+fire_tree,火木,화목,불과 나무,fire;tree,8,sun_moon;mountain_water,gold_earth;heaven_earth
+gold_earth,金土,금토,쇠와 흙,gold;earth,8,fire_tree;mountain_water,mountain_water;fire_tree

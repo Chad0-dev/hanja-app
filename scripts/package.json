@@ -1,0 +1,24 @@
+{
+  "name": "hanja-import-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for importing Hanja data from CSV/Excel files",
+  "main": "importHanjaData.js",
+  "scripts": {
+    "import": "node importHanjaData.js",
+    "test": "node test-import.js"
+  },
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "hanja",
+    "korean",
+    "import",
+    "csv",
+    "excel"
+  ],
+  "author": "",
+  "license": "MIT"
+}
