@@ -60,7 +60,7 @@ export const HamburgerMenu: React.FC = () => {
       onPress: () => selectGrade(grade),
     }));
 
-    gradeButtons.push({ text: '취소', onPress: () => {} });
+    gradeButtons.push({ text: '취소', onPress: async () => {} });
 
     Alert.alert(
       '급수 선택',

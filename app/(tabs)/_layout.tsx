@@ -17,7 +17,7 @@ export default function TabLayout() {
     if (canGoBack) {
       goBackToPreviousCard();
       // 홈 탭으로 이동
-      router.push('/(tabs)/');
+      router.push('/(tabs)');
     }
   };
 

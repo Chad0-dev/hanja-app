@@ -1,12 +1,38 @@
 import * as SQLite from 'expo-sqlite';
-import { seedHanjaCharacters, seedHanjaWordCards } from '../data/seedData';
+import { characterData } from '../data/characterData';
+import { wordData } from '../data/wordData';
 import { initializeDatabase } from './hanjaDB';
 
 /**
- * 기존 hanjaWordData.ts 데이터를 SQLite로 마이그레이션
+ * 복잡한 의미 필드를 단순한 문자열로 변환
+ * 예: [[['학교'], ['교']]] → '학교'
+ */
+const parseMeaning = (meaningStr: string): string => {
+  try {
+    if (meaningStr.includes('[[') && meaningStr.includes(']]')) {
+      const firstQuoteIndex = meaningStr.indexOf("'");
+      const secondQuoteIndex = meaningStr.indexOf("'", firstQuoteIndex + 1);
+
+      if (firstQuoteIndex !== -1 && secondQuoteIndex !== -1) {
+        const extracted = meaningStr.substring(
+          firstQuoteIndex + 1,
+          secondQuoteIndex
+        );
+        return extracted.replace(/\\'/g, "'");
+      }
+    }
+    return meaningStr;
+  } catch (error) {
+    console.warn('의미 파싱 실패:', meaningStr, error);
+    return meaningStr;
+  }
+};
+
+/**
+ * CSV 파일 기반 데이터를 SQLite로 마이그레이션
  */
 export const migrateDataToSQLite = async (): Promise<void> => {
-  console.log('🚀 데이터 마이그레이션 시작...');
+  console.log('🚀 CSV 기반 데이터 마이그레이션 시작...');
 
   try {
     const db = await initializeDatabase();
@@ -14,16 +40,16 @@ export const migrateDataToSQLite = async (): Promise<void> => {
     // 기존 데이터 삭제 (개발 중에만 사용)
     await clearExistingData(db);
 
-    // 개별 한자 데이터 삽입
-    await insertCharacters(db);
+    // characterData.ts에서 한자 데이터 삽입
+    await insertCharactersFromData(db);
 
-    // 한자 단어 데이터 삽입
-    await insertWords(db);
+    // 완성 단어 데이터 삽입
+    await insertWordsFromData(db);
 
     // 단어-한자 관계 데이터 삽입
     await insertWordCharacterRelations(db);
 
-    console.log('✅ 데이터 마이그레이션 완료!');
+    console.log('✅ CSV 기반 데이터 마이그레이션 완료!');
 
     // 마이그레이션 결과 확인
     await verifyMigration(db);
@@ -49,13 +75,17 @@ const clearExistingData = async (db: SQLite.SQLiteDatabase): Promise<void> => {
 };
 
 /**
- * 개별 한자 데이터 삽입
+ * characterData.ts에서 한자 데이터를 삽입
  */
-const insertCharacters = async (db: SQLite.SQLiteDatabase): Promise<void> => {
-  const characters = seedHanjaCharacters;
-  let insertedCount = 0;
-
+const insertCharactersFromData = async (
+  db: SQLite.SQLiteDatabase
+): Promise<void> => {
   try {
+    console.log('📖 characterData.ts에서 한자 데이터 로드 중...');
+
+    const characters = characterData;
+    let insertedCount = 0;
+
     for (const char of characters) {
       await db.runAsync(
         `INSERT INTO characters 
@@ -65,7 +95,7 @@ const insertCharacters = async (db: SQLite.SQLiteDatabase): Promise<void> => {
           char.id,
           char.character,
           char.pronunciation,
-          char.meaning,
+          parseMeaning(char.meaning),
           char.strokeCount,
           char.radical,
           char.radicalName,
@@ -74,7 +104,10 @@ const insertCharacters = async (db: SQLite.SQLiteDatabase): Promise<void> => {
       );
       insertedCount++;
     }
-    console.log(`📝 개별 한자 ${insertedCount}개 삽입 완료`);
+
+    console.log(
+      `📝 characterData에서 로드된 한자 ${insertedCount}개 삽입 완료`
+    );
   } catch (error) {
     console.error('❌ 한자 데이터 삽입 실패:', error);
     throw error;
@@ -82,13 +115,18 @@ const insertCharacters = async (db: SQLite.SQLiteDatabase): Promise<void> => {
 };
 
 /**
- * 한자 단어 데이터 삽입
+ * wordData.ts에서 완성 단어 데이터를 삽입
  */
-const insertWords = async (db: SQLite.SQLiteDatabase): Promise<void> => {
-  let insertedCount = 0;
-
+const insertWordsFromData = async (
+  db: SQLite.SQLiteDatabase
+): Promise<void> => {
   try {
-    for (const word of seedHanjaWordCards) {
+    console.log('📖 wordData.ts에서 완성 단어 데이터 로드 중...');
+
+    const words = wordData;
+    let insertedCount = 0;
+
+    for (const word of words) {
       await db.runAsync(
         `INSERT INTO words 
          (id, word, pronunciation, meaning, grade, isMemorized, leftSwipeWords, rightSwipeWords) 
@@ -106,9 +144,12 @@ const insertWords = async (db: SQLite.SQLiteDatabase): Promise<void> => {
       );
       insertedCount++;
     }
-    console.log(`📚 한자 단어 ${insertedCount}개 삽입 완료`);
+
+    console.log(
+      `📚 wordData에서 로드된 완성 단어 ${insertedCount}개 삽입 완료`
+    );
   } catch (error) {
-    console.error('❌ 단어 데이터 삽입 실패:', error);
+    console.error('❌ 완성 단어 데이터 삽입 실패:', error);
     throw error;
   }
 };
@@ -120,26 +161,40 @@ const insertWordCharacterRelations = async (
   db: SQLite.SQLiteDatabase
 ): Promise<void> => {
   let insertedCount = 0;
+  let skippedCount = 0;
   let totalRelations = 0;
 
   // 총 관계 수 계산
-  seedHanjaWordCards.forEach(word => {
+  wordData.forEach(word => {
     totalRelations += word.characters.length;
   });
 
+  console.log(`🔗 총 ${totalRelations}개 관계 데이터 삽입 시작...`);
+
   try {
-    for (const word of seedHanjaWordCards) {
+    for (const word of wordData) {
       for (let index = 0; index < word.characters.length; index++) {
         const char = word.characters[index];
-        await db.runAsync(
-          `INSERT INTO word_characters (wordId, characterId, position) 
-           VALUES (?, ?, ?)`,
-          [word.id, char.id, index]
-        );
-        insertedCount++;
+
+        try {
+          await db.runAsync(
+            `INSERT INTO word_characters (wordId, characterId, position) 
+             VALUES (?, ?, ?)`,
+            [word.id, char.id, index]
+          );
+          insertedCount++;
+        } catch (relationError) {
+          console.warn(
+            `⚠️ 관계 삽입 실패: ${word.word}[${index}] - ${char.character} (${char.id})`
+          );
+          skippedCount++;
+        }
       }
     }
-    console.log(`🔗 단어-한자 관계 ${insertedCount}개 삽입 완료`);
+    console.log(`🔗 단어-한자 관계 삽입 완료:`);
+    console.log(`   성공: ${insertedCount}개`);
+    console.log(`   실패: ${skippedCount}개`);
+    console.log(`   총계: ${totalRelations}개`);
   } catch (error) {
     console.error('❌ 관계 데이터 삽입 실패:', error);
     throw error;

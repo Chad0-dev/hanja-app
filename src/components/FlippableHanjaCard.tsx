@@ -29,9 +29,9 @@ interface FlippableHanjaCardProps {
   /** 한자 단어 카드 데이터 */
   card: HanjaWordCard;
   /** 왼쪽으로 스와이프했을 때 실행할 콜백 */
-  onSwipeLeft?: () => void;
+  onSwipeLeft?: (card: HanjaWordCard) => void;
   /** 오른쪽으로 스와이프했을 때 실행할 콜백 */
-  onSwipeRight?: () => void;
+  onSwipeRight?: (card: HanjaWordCard) => void;
   /** 스와이프가 시작되었을 때 실행할 콜백 */
   onSwipeStart?: () => void;
   /** 스와이프가 취소되었을 때 실행할 콜백 */
@@ -46,366 +46,390 @@ interface FlippableHanjaCardProps {
   hideText?: boolean;
 }
 
-export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = ({
-  card,
-  onSwipeLeft,
-  onSwipeRight,
-  onSwipeStart,
-  onSwipeCancel,
-  onFlipStart,
-  onFlipEnd,
-  cardStyle,
-  hideText = false,
-}) => {
-  const [isFlipped, setIsFlipped] = useState(false);
+export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
+  ({
+    card,
+    onSwipeLeft,
+    onSwipeRight,
+    onSwipeStart,
+    onSwipeCancel,
+    onFlipStart,
+    onFlipEnd,
+    cardStyle,
+    hideText = false,
+  }) => {
+    const [isFlipped, setIsFlipped] = useState(false);
 
-  // 제스처와 애니메이션을 위한 shared values - 메모리 최적화
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const opacity = useSharedValue(1);
-  const hasStartedSwipe = useSharedValue(false);
+    // 제스처와 애니메이션을 위한 shared values - 메모리 최적화
+    const translateX = useSharedValue(0);
+    const translateY = useSharedValue(0);
+    const opacity = useSharedValue(1);
+    const hasStartedSwipe = useSharedValue(false);
 
-  // 애니메이션 제거 - 크래시 방지
+    // 애니메이션 제거 - 크래시 방지
 
-  // 카드 뒤집기 함수 - 크래시 방지를 위한 최대 단순화
-  const flipCard = () => {
-    // 뒤집기 시작 콜백
-    if (onFlipStart) {
-      onFlipStart();
+    // 카드 뒤집기 함수 - 크래시 방지를 위한 최대 단순화
+    const flipCard = () => {
+      // 뒤집기 시작 콜백
+      if (onFlipStart) {
+        onFlipStart();
+      }
+
+      // 즉시 상태 변경 (애니메이션 없이)
+      setIsFlipped(!isFlipped);
+
+      // 뒤집기 완료 콜백 (약간의 딜레이 후)
+      setTimeout(() => {
+        if (onFlipEnd) {
+          onFlipEnd();
+        }
+      }, 100);
+    };
+
+    /**
+     * 카드를 초기 위치로 되돌리는 함수
+     */
+    const resetCard = () => {
+      'worklet';
+      translateX.value = withSpring(0, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.8,
+      });
+      translateY.value = withSpring(0, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.8,
+      });
+      opacity.value = 1;
+    };
+
+    /**
+     * 카드를 화면 밖으로 애니메이션하는 함수
+     */
+    const animateCardOut = (direction: 'left' | 'right') => {
+      'worklet';
+      const targetX =
+        direction === 'left' ? -screenWidth * 1.5 : screenWidth * 1.5;
+
+      translateX.value = withSpring(targetX, {
+        damping: 12,
+        stiffness: 200,
+        mass: 0.8,
+      });
+
+      translateY.value = withSpring(-100, {
+        damping: 12,
+        stiffness: 200,
+        mass: 0.8,
+      });
+
+      opacity.value = withSpring(0, {
+        damping: 12,
+        stiffness: 200,
+        mass: 0.8,
+      });
+    };
+
+    /**
+     * 스와이프 제스처 핸들러
+     */
+    const gestureHandler =
+      useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
+        onStart: () => {
+          hasStartedSwipe.value = false;
+        },
+        onActive: event => {
+          // 실제 드래그가 시작된 시점에서만 스와이프 시작 콜백 실행 (한번만)
+          const dragDistance =
+            Math.abs(event.translationX) + Math.abs(event.translationY);
+          if (dragDistance > 5 && !hasStartedSwipe.value && onSwipeStart) {
+            hasStartedSwipe.value = true;
+            runOnJS(onSwipeStart)();
+          }
+
+          // 카드 위치 업데이트
+          translateX.value = event.translationX;
+          translateY.value = event.translationY * 0.3;
+          opacity.value = 1;
+        },
+        onEnd: event => {
+          const { translationX, velocityX } = event;
+
+          // 빠른 속도로 스와이프했거나 임계점을 넘었는지 확인
+          const shouldSwipeLeft =
+            translationX < -SWIPE_THRESHOLD || velocityX < -500;
+          const shouldSwipeRight =
+            translationX > SWIPE_THRESHOLD || velocityX > 500;
+
+          if (shouldSwipeLeft) {
+            animateCardOut('left');
+            if (onSwipeLeft) {
+              runOnJS(onSwipeLeft)(card);
+            }
+          } else if (shouldSwipeRight) {
+            animateCardOut('right');
+            if (onSwipeRight) {
+              runOnJS(onSwipeRight)(card);
+            }
+          } else {
+            resetCard();
+            if (hasStartedSwipe.value && onSwipeCancel) {
+              runOnJS(onSwipeCancel)();
+            }
+          }
+        },
+      });
+
+    /**
+     * 카드 애니메이션 스타일
+     */
+    const cardAnimatedStyle = useAnimatedStyle(() => {
+      // 회전 각도 계산 (X 이동량에 비례) - 메모리 최적화
+      const rotation = interpolate(
+        translateX.value,
+        [-screenWidth / 2, 0, screenWidth / 2],
+        [-15, 0, 15], // 간단한 회전각도로 최적화
+        Extrapolate.CLAMP
+      );
+
+      return {
+        transform: [
+          { translateX: translateX.value },
+          { translateY: translateY.value },
+          { rotateZ: `${rotation}deg` },
+        ],
+        opacity: opacity.value,
+      };
+    });
+
+    /**
+     * 좌측 연관단어 하이라이트 애니메이션
+     */
+    const leftHighlightStyle = useAnimatedStyle(() => {
+      const isActive = translateX.value < -50; // 왼쪽으로 50px 이상 스와이프 시 활성화
+
+      return {
+        backgroundColor: isActive
+          ? 'rgba(200, 200, 200, 0.9)'
+          : 'rgba(0, 0, 0, 0)',
+        // transform 제거 - 정렬 안정성을 위해
+        borderRadius: 12,
+        paddingHorizontal: 6, // 고정값으로 변경
+        paddingVertical: 3, // 고정값으로 변경
+      };
+    });
+
+    /**
+     * 우측 연관단어 하이라이트 애니메이션
+     */
+    const rightHighlightStyle = useAnimatedStyle(() => {
+      const isActive = translateX.value > 50; // 오른쪽으로 50px 이상 스와이프 시 활성화
+
+      return {
+        backgroundColor: isActive
+          ? 'rgba(200, 200, 200, 0.9)'
+          : 'rgba(0, 0, 0, 0)',
+        // transform 제거 - 정렬 안정성을 위해
+        borderRadius: 12,
+        paddingHorizontal: 6, // 고정값으로 변경
+        paddingVertical: 3, // 고정값으로 변경
+      };
+    });
+
+    /**
+     * 좌측 텍스트 색상 애니메이션
+     */
+    const leftTextStyle = useAnimatedStyle(() => {
+      return {
+        color: translateX.value < -50 ? '#333333' : '#999',
+        // fontWeight 제거 - 높이 차이 방지
+      };
+    });
+
+    /**
+     * 우측 텍스트 색상 애니메이션
+     */
+    const rightTextStyle = useAnimatedStyle(() => {
+      return {
+        color: translateX.value > 50 ? '#333333' : '#999',
+        // fontWeight 제거 - 높이 차이 방지
+      };
+    });
+
+    // 애니메이션 스타일 제거 - 크래시 방지를 위한 단순화
+
+    /**
+     * 좌측 액션 인디케이터 스타일
+     */
+    const leftActionStyle = useAnimatedStyle(() => {
+      const leftOpacity = interpolate(
+        translateX.value,
+        [-SWIPE_THRESHOLD, -50, 0],
+        [1, 0.7, 0],
+        Extrapolate.CLAMP
+      );
+
+      return {
+        opacity: leftOpacity,
+      };
+    });
+
+    /**
+     * 우측 액션 인디케이터 스타일
+     */
+    const rightActionStyle = useAnimatedStyle(() => {
+      const rightOpacity = interpolate(
+        translateX.value,
+        [0, 50, SWIPE_THRESHOLD],
+        [0, 0.7, 1],
+        Extrapolate.CLAMP
+      );
+
+      return {
+        opacity: rightOpacity,
+      };
+    });
+
+    if (hideText) {
+      return (
+        <PanGestureHandler onGestureEvent={gestureHandler}>
+          <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
+            <View style={[styles.card, styles.hiddenCard, cardStyle]} />
+          </Animated.View>
+        </PanGestureHandler>
+      );
     }
 
-    // 즉시 상태 변경 (애니메이션 없이)
-    setIsFlipped(!isFlipped);
-
-    // 뒤집기 완료 콜백 (약간의 딜레이 후)
-    setTimeout(() => {
-      if (onFlipEnd) {
-        onFlipEnd();
-      }
-    }, 100);
-  };
-
-  /**
-   * 카드를 초기 위치로 되돌리는 함수
-   */
-  const resetCard = () => {
-    'worklet';
-    translateX.value = withSpring(0, {
-      damping: 20,
-      stiffness: 300,
-      mass: 0.8,
-    });
-    translateY.value = withSpring(0, {
-      damping: 20,
-      stiffness: 300,
-      mass: 0.8,
-    });
-    opacity.value = 1;
-  };
-
-  /**
-   * 카드를 화면 밖으로 애니메이션하는 함수
-   */
-  const animateCardOut = (direction: 'left' | 'right') => {
-    'worklet';
-    const targetX =
-      direction === 'left' ? -screenWidth * 1.5 : screenWidth * 1.5;
-
-    translateX.value = withSpring(targetX, {
-      damping: 12,
-      stiffness: 200,
-      mass: 0.8,
-    });
-
-    translateY.value = withSpring(-100, {
-      damping: 12,
-      stiffness: 200,
-      mass: 0.8,
-    });
-
-    opacity.value = withSpring(0, {
-      damping: 12,
-      stiffness: 200,
-      mass: 0.8,
-    });
-  };
-
-  /**
-   * 스와이프 제스처 핸들러
-   */
-  const gestureHandler =
-    useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-      onStart: () => {
-        hasStartedSwipe.value = false;
-      },
-      onActive: event => {
-        // 실제 드래그가 시작된 시점에서만 스와이프 시작 콜백 실행 (한번만)
-        const dragDistance =
-          Math.abs(event.translationX) + Math.abs(event.translationY);
-        if (dragDistance > 5 && !hasStartedSwipe.value && onSwipeStart) {
-          hasStartedSwipe.value = true;
-          runOnJS(onSwipeStart)();
-        }
-
-        // 카드 위치 업데이트
-        translateX.value = event.translationX;
-        translateY.value = event.translationY * 0.3;
-        opacity.value = 1;
-      },
-      onEnd: event => {
-        const { translationX, velocityX } = event;
-
-        // 빠른 속도로 스와이프했거나 임계점을 넘었는지 확인
-        const shouldSwipeLeft =
-          translationX < -SWIPE_THRESHOLD || velocityX < -500;
-        const shouldSwipeRight =
-          translationX > SWIPE_THRESHOLD || velocityX > 500;
-
-        if (shouldSwipeLeft) {
-          animateCardOut('left');
-          if (onSwipeLeft) {
-            runOnJS(onSwipeLeft)();
-          }
-        } else if (shouldSwipeRight) {
-          animateCardOut('right');
-          if (onSwipeRight) {
-            runOnJS(onSwipeRight)();
-          }
-        } else {
-          resetCard();
-          if (hasStartedSwipe.value && onSwipeCancel) {
-            runOnJS(onSwipeCancel)();
-          }
-        }
-      },
-    });
-
-  /**
-   * 카드 애니메이션 스타일
-   */
-  const cardAnimatedStyle = useAnimatedStyle(() => {
-    // 회전 각도 계산 (X 이동량에 비례) - 메모리 최적화
-    const rotation = interpolate(
-      translateX.value,
-      [-screenWidth / 2, 0, screenWidth / 2],
-      [-15, 0, 15], // 간단한 회전각도로 최적화
-      Extrapolate.CLAMP
-    );
-
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-        { rotateZ: `${rotation}deg` },
-      ],
-      opacity: opacity.value,
-    };
-  });
-
-  /**
-   * 좌측 연관단어 하이라이트 애니메이션
-   */
-  const leftHighlightStyle = useAnimatedStyle(() => {
-    const isActive = translateX.value < -50; // 왼쪽으로 50px 이상 스와이프 시 활성화
-
-    return {
-      backgroundColor: isActive
-        ? 'rgba(200, 200, 200, 0.9)'
-        : 'rgba(0, 0, 0, 0)',
-      // transform 제거 - 정렬 안정성을 위해
-      borderRadius: 12,
-      paddingHorizontal: 6, // 고정값으로 변경
-      paddingVertical: 3, // 고정값으로 변경
-    };
-  });
-
-  /**
-   * 우측 연관단어 하이라이트 애니메이션
-   */
-  const rightHighlightStyle = useAnimatedStyle(() => {
-    const isActive = translateX.value > 50; // 오른쪽으로 50px 이상 스와이프 시 활성화
-
-    return {
-      backgroundColor: isActive
-        ? 'rgba(200, 200, 200, 0.9)'
-        : 'rgba(0, 0, 0, 0)',
-      // transform 제거 - 정렬 안정성을 위해
-      borderRadius: 12,
-      paddingHorizontal: 6, // 고정값으로 변경
-      paddingVertical: 3, // 고정값으로 변경
-    };
-  });
-
-  /**
-   * 좌측 텍스트 색상 애니메이션
-   */
-  const leftTextStyle = useAnimatedStyle(() => {
-    return {
-      color: translateX.value < -50 ? '#333333' : '#999',
-      // fontWeight 제거 - 높이 차이 방지
-    };
-  });
-
-  /**
-   * 우측 텍스트 색상 애니메이션
-   */
-  const rightTextStyle = useAnimatedStyle(() => {
-    return {
-      color: translateX.value > 50 ? '#333333' : '#999',
-      // fontWeight 제거 - 높이 차이 방지
-    };
-  });
-
-  // 애니메이션 스타일 제거 - 크래시 방지를 위한 단순화
-
-  /**
-   * 좌측 액션 인디케이터 스타일
-   */
-  const leftActionStyle = useAnimatedStyle(() => {
-    const leftOpacity = interpolate(
-      translateX.value,
-      [-SWIPE_THRESHOLD, -50, 0],
-      [1, 0.7, 0],
-      Extrapolate.CLAMP
-    );
-
-    return {
-      opacity: leftOpacity,
-    };
-  });
-
-  /**
-   * 우측 액션 인디케이터 스타일
-   */
-  const rightActionStyle = useAnimatedStyle(() => {
-    const rightOpacity = interpolate(
-      translateX.value,
-      [0, 50, SWIPE_THRESHOLD],
-      [0, 0.7, 1],
-      Extrapolate.CLAMP
-    );
-
-    return {
-      opacity: rightOpacity,
-    };
-  });
-
-  if (hideText) {
     return (
       <PanGestureHandler onGestureEvent={gestureHandler}>
         <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
-          <View style={[styles.card, styles.hiddenCard, cardStyle]} />
+          {/* 단순한 조건부 렌더링 - 크래시 방지 */}
+          {!isFlipped ? (
+            /* 앞면 카드 - 한자 단어만 표시 */
+            <View style={[styles.card, styles.frontCard]}>
+              {/* 급수 배지 - 오른쪽 상단 */}
+              <View style={styles.gradeBadge}>
+                <Text style={styles.gradeText}>{card.grade}급</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.fullCardContainer}
+                onPress={flipCard}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.hanjaText}>{card.word}</Text>
+                <Text style={styles.tapHint}>탭하여 뒤집기</Text>
+              </TouchableOpacity>
+
+              {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
+              <Animated.View
+                style={[
+                  styles.swipeIndicator,
+                  styles.leftSwipeIndicator,
+                  leftHighlightStyle,
+                ]}
+              >
+                <Animated.Text
+                  style={[styles.swipeIndicatorText, leftTextStyle]}
+                >
+                  {card.characters[0]?.character} 연관단어
+                </Animated.Text>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.swipeIndicator,
+                  styles.rightSwipeIndicator,
+                  rightHighlightStyle,
+                ]}
+              >
+                <Animated.Text
+                  style={[styles.swipeIndicatorText, rightTextStyle]}
+                >
+                  {card.characters[1]?.character ||
+                    card.characters[0]?.character}{' '}
+                  연관단어
+                </Animated.Text>
+              </Animated.View>
+            </View>
+          ) : (
+            /* 뒷면 카드 - 발음, 뜻, 구성 한자 정보 */
+            <View style={[styles.card, styles.backCard]}>
+              <TouchableOpacity
+                style={styles.fullCardContainer}
+                onPress={flipCard}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.pronunciationText}>
+                  {card.pronunciation}
+                </Text>
+                <Text style={styles.meaningText}>{card.meaning}</Text>
+
+                {/* 구성 한자들 정보 */}
+                <View style={styles.charactersContainer}>
+                  <Text style={styles.charactersTitle}>구성 한자:</Text>
+                  {card.characters.map((char, index) => (
+                    <View key={char.id} style={styles.characterInfo}>
+                      <Text style={styles.characterText}>
+                        {char.character} {char.meaning} {char.pronunciation}
+                      </Text>
+                      <Text style={styles.characterDetails}>
+                        {char.strokeCount}획, {char.radicalName}({char.radical})
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                <Text style={styles.tapHint}>탭하여 뒤집기</Text>
+              </TouchableOpacity>
+
+              {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
+              <Animated.View
+                style={[
+                  styles.swipeIndicator,
+                  styles.leftSwipeIndicator,
+                  leftHighlightStyle,
+                ]}
+              >
+                <Animated.Text
+                  style={[styles.swipeIndicatorText, leftTextStyle]}
+                >
+                  {card.characters[0]?.character} 연관단어
+                </Animated.Text>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.swipeIndicator,
+                  styles.rightSwipeIndicator,
+                  rightHighlightStyle,
+                ]}
+              >
+                <Animated.Text
+                  style={[styles.swipeIndicatorText, rightTextStyle]}
+                >
+                  {card.characters[1]?.character ||
+                    card.characters[0]?.character}{' '}
+                  연관단어
+                </Animated.Text>
+              </Animated.View>
+            </View>
+          )}
         </Animated.View>
       </PanGestureHandler>
     );
+    // React.memo의 비교 함수 (성능 최적화)
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.card.id === nextProps.card.id &&
+      prevProps.hideText === nextProps.hideText &&
+      JSON.stringify(prevProps.cardStyle) ===
+        JSON.stringify(nextProps.cardStyle)
+    );
   }
-
-  return (
-    <PanGestureHandler onGestureEvent={gestureHandler}>
-      <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
-        {/* 단순한 조건부 렌더링 - 크래시 방지 */}
-        {!isFlipped ? (
-          /* 앞면 카드 - 한자 단어만 표시 */
-          <View style={[styles.card, styles.frontCard]}>
-            <TouchableOpacity
-              style={styles.fullCardContainer}
-              onPress={flipCard}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.hanjaText}>{card.word}</Text>
-              <Text style={styles.tapHint}>탭하여 뒤집기</Text>
-            </TouchableOpacity>
-
-            {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
-            <Animated.View
-              style={[
-                styles.swipeIndicator,
-                styles.leftSwipeIndicator,
-                leftHighlightStyle,
-              ]}
-            >
-              <Animated.Text style={[styles.swipeIndicatorText, leftTextStyle]}>
-                {card.characters[0]?.character} 연관단어
-              </Animated.Text>
-            </Animated.View>
-
-            <Animated.View
-              style={[
-                styles.swipeIndicator,
-                styles.rightSwipeIndicator,
-                rightHighlightStyle,
-              ]}
-            >
-              <Animated.Text
-                style={[styles.swipeIndicatorText, rightTextStyle]}
-              >
-                {card.characters[1]?.character || card.characters[0]?.character}{' '}
-                연관단어
-              </Animated.Text>
-            </Animated.View>
-          </View>
-        ) : (
-          /* 뒷면 카드 - 발음, 뜻, 구성 한자 정보 */
-          <View style={[styles.card, styles.backCard]}>
-            <TouchableOpacity
-              style={styles.fullCardContainer}
-              onPress={flipCard}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.pronunciationText}>{card.pronunciation}</Text>
-              <Text style={styles.meaningText}>{card.meaning}</Text>
-
-              {/* 구성 한자들 정보 */}
-              <View style={styles.charactersContainer}>
-                <Text style={styles.charactersTitle}>구성 한자:</Text>
-                {card.characters.map((char, index) => (
-                  <View key={char.id} style={styles.characterInfo}>
-                    <Text style={styles.characterText}>
-                      {char.character} {char.meaning} {char.pronunciation}
-                    </Text>
-                    <Text style={styles.characterDetails}>
-                      {char.strokeCount}획, {char.radicalName}({char.radical})
-                    </Text>
-                  </View>
-                ))}
-              </View>
-
-              <Text style={styles.tapHint}>탭하여 뒤집기</Text>
-            </TouchableOpacity>
-
-            {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
-            <Animated.View
-              style={[
-                styles.swipeIndicator,
-                styles.leftSwipeIndicator,
-                leftHighlightStyle,
-              ]}
-            >
-              <Animated.Text style={[styles.swipeIndicatorText, leftTextStyle]}>
-                {card.characters[0]?.character} 연관단어
-              </Animated.Text>
-            </Animated.View>
-
-            <Animated.View
-              style={[
-                styles.swipeIndicator,
-                styles.rightSwipeIndicator,
-                rightHighlightStyle,
-              ]}
-            >
-              <Animated.Text
-                style={[styles.swipeIndicatorText, rightTextStyle]}
-              >
-                {card.characters[1]?.character || card.characters[0]?.character}{' '}
-                연관단어
-              </Animated.Text>
-            </Animated.View>
-          </View>
-        )}
-      </Animated.View>
-    </PanGestureHandler>
-  );
-};
+);
 
 const styles = StyleSheet.create({
   cardContainer: {
@@ -437,6 +461,30 @@ const styles = StyleSheet.create({
   },
   frontCard: {
     // 앞면 카드 전용 스타일
+  },
+  gradeBadge: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    backgroundColor: '#2c1810', // 먹색 (진한 갈색)
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 5,
+    zIndex: 10, // 다른 요소들보다 위에 표시
+  },
+  gradeText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   backCard: {
     backgroundColor: '#faf8f5', // 따뜻한 오프화이트

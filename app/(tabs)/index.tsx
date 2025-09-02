@@ -86,7 +86,7 @@ export default function HomeScreen() {
   // 로딩 중이거나 카드가 없을 때는 로딩 화면 표시
   return (
     <ImageBackground
-      source={require('@/assets/images/backgraund.png')}
+      source={require('@/assets/images/backgraund1.png')}
       style={styles.backgroundImage}
       resizeMode="cover"
     >

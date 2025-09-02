@@ -92,6 +92,13 @@ const createTablesSync = (): void => {
     db.execSync(
       'CREATE INDEX IF NOT EXISTS idx_characters_character ON characters(character);'
     );
+    // 추가 성능 최적화 인덱스
+    db.execSync(
+      'CREATE INDEX IF NOT EXISTS idx_word_characters_wordId ON word_characters(wordId);'
+    );
+    db.execSync(
+      'CREATE INDEX IF NOT EXISTS idx_word_characters_characterId ON word_characters(characterId);'
+    );
 
     console.log('📊 데이터베이스 테이블 및 인덱스 생성 완료 (Sync)');
   } catch (error) {
@@ -160,6 +167,13 @@ const createTables = async (): Promise<void> => {
     await db.execAsync(
       'CREATE INDEX IF NOT EXISTS idx_characters_character ON characters(character);'
     );
+    // 추가 성능 최적화 인덱스
+    await db.execAsync(
+      'CREATE INDEX IF NOT EXISTS idx_word_characters_wordId ON word_characters(wordId);'
+    );
+    await db.execAsync(
+      'CREATE INDEX IF NOT EXISTS idx_word_characters_characterId ON word_characters(characterId);'
+    );
 
     console.log('📊 데이터베이스 테이블 및 인덱스 생성 완료');
   } catch (error) {
@@ -179,11 +193,20 @@ export const getWordsByGrade = async (
   }
 
   try {
+    console.log(`🔍 ${grade}급 단어 조회 시작...`);
+
     const result = await db.getAllAsync(
       `SELECT w.*, 
-       GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
-                   c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
-                   c.radicalStrokes, '@@' ORDER BY wc.position) as characters_data
+       GROUP_CONCAT(
+         CASE 
+           WHEN c.character IS NOT NULL THEN 
+             c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
+             c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
+             c.radicalStrokes
+           ELSE NULL
+         END, 
+         '@@' ORDER BY wc.position
+       ) as characters_data
        FROM words w
        LEFT JOIN word_characters wc ON w.id = wc.wordId
        LEFT JOIN characters c ON wc.characterId = c.id
@@ -193,20 +216,35 @@ export const getWordsByGrade = async (
       [grade]
     );
 
-    const words: HanjaWordCard[] = result.map((row: any) => ({
-      id: row.id,
-      word: row.word,
-      pronunciation: row.pronunciation,
-      meaning: row.meaning,
-      grade: row.grade as HanjaGrade,
-      isMemorized: Boolean(row.isMemorized),
-      characters: parseCharactersData(row.characters_data),
-      relatedWords: {
-        leftSwipe: row.leftSwipeWords ? JSON.parse(row.leftSwipeWords) : [],
-        rightSwipe: row.rightSwipeWords ? JSON.parse(row.rightSwipeWords) : [],
-      },
-    }));
+    console.log(`📊 ${grade}급: ${result.length}개 단어 조회됨`);
 
+    const words: HanjaWordCard[] = result.map((row: any) => {
+      const characters = parseCharactersData(row.characters_data);
+
+      // 디버깅: 한자가 없는 단어 로그
+      if (characters.length === 0) {
+        console.warn(`⚠️ 한자가 없는 단어 발견: ${row.word}(${row.id})`);
+        console.warn(`⚠️ characters_data: ${row.characters_data}`);
+      }
+
+      return {
+        id: row.id,
+        word: row.word,
+        pronunciation: row.pronunciation,
+        meaning: row.meaning,
+        grade: row.grade as HanjaGrade,
+        isMemorized: Boolean(row.isMemorized),
+        characters,
+        relatedWords: {
+          leftSwipe: row.leftSwipeWords ? JSON.parse(row.leftSwipeWords) : [],
+          rightSwipe: row.rightSwipeWords
+            ? JSON.parse(row.rightSwipeWords)
+            : [],
+        },
+      };
+    });
+
+    console.log(`✅ ${grade}급 단어 파싱 완료: ${words.length}개`);
     return words;
   } catch (error) {
     console.error('❌ 급수별 단어 조회 실패:', error);
@@ -227,9 +265,16 @@ export const getWordsByMemorized = async (
   try {
     const result = await db.getAllAsync(
       `SELECT w.*, 
-       GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
-                   c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
-                   c.radicalStrokes, '@@' ORDER BY wc.position) as characters_data
+       GROUP_CONCAT(
+         CASE 
+           WHEN c.character IS NOT NULL THEN 
+             c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
+             c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
+             c.radicalStrokes
+           ELSE NULL
+         END, 
+         '@@' ORDER BY wc.position
+       ) as characters_data
        FROM words w
        LEFT JOIN word_characters wc ON w.id = wc.wordId
        LEFT JOIN characters c ON wc.characterId = c.id
@@ -273,9 +318,16 @@ export const getWordsByCharacter = async (
   try {
     const result = await db.getAllAsync(
       `SELECT DISTINCT w.*, 
-       GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
-                   c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
-                   c.radicalStrokes, '@@' ORDER BY wc.position) as characters_data
+       GROUP_CONCAT(
+         CASE 
+           WHEN c.character IS NOT NULL THEN 
+             c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || 
+             c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || 
+             c.radicalStrokes
+           ELSE NULL
+         END, 
+         '@@' ORDER BY wc.position
+       ) as characters_data
        FROM words w
        JOIN word_characters wc ON w.id = wc.wordId
        JOIN characters c ON wc.characterId = c.id
@@ -388,32 +440,64 @@ export const getGradeStatistics = async (): Promise<
 };
 
 /**
- * 문자열로 저장된 한자 데이터를 파싱
+ * 문자열로 저장된 한자 데이터를 파싱 (성능 최적화)
  */
 const parseCharactersData = (charactersData: string): HanjaCharacter[] => {
-  if (!charactersData) return [];
+  if (
+    !charactersData ||
+    charactersData === 'null' ||
+    charactersData.trim() === ''
+  ) {
+    console.warn('⚠️ parseCharactersData: 빈 데이터 감지:', charactersData);
+    return [];
+  }
 
-  return charactersData.split('@@').map(charData => {
-    const [
-      character,
-      pronunciation,
-      meaning,
-      strokeCount,
-      radical,
-      radicalName,
-      radicalStrokes,
-    ] = charData.split('|');
-    return {
-      id: `char_${character}`,
-      character,
-      pronunciation,
-      meaning,
-      strokeCount: parseInt(strokeCount),
-      radical,
-      radicalName,
-      radicalStrokes: parseInt(radicalStrokes),
-    };
-  });
+  try {
+    const charDataArray = charactersData.split('@@');
+    const characters: HanjaCharacter[] = [];
+
+    // 성능 최적화: for loop 사용, 사전 할당
+    for (let i = 0; i < charDataArray.length; i++) {
+      const charData = charDataArray[i];
+      const parts = charData.split('|');
+
+      // 빠른 검증: 길이만 체크
+      if (parts.length < 7) continue;
+
+      const [
+        character,
+        pronunciation,
+        meaning,
+        strokeCount,
+        radical,
+        radicalName,
+        radicalStrokes,
+      ] = parts;
+
+      // 필수 필드만 빠르게 검증
+      if (!character || !pronunciation || !meaning) continue;
+
+      // 직접 push로 성능 향상
+      characters.push({
+        id: `char_${character}`,
+        character,
+        pronunciation,
+        meaning,
+        strokeCount: parseInt(strokeCount) || 0,
+        radical: radical || '',
+        radicalName: radicalName || '',
+        radicalStrokes: parseInt(radicalStrokes) || 0,
+      });
+    }
+
+    console.log(
+      `✅ parseCharactersData: ${characters.length}개 한자 파싱 완료`
+    );
+    return characters;
+  } catch (error) {
+    console.error('❌ parseCharactersData 파싱 에러:', error);
+    return [];
+  }
 };
 
 /**

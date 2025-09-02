@@ -81,9 +81,14 @@ interface AppState {
   >;
   setSelectedGrade: (grade: HanjaGrade | null) => void;
   toggleWordMemorized: (wordId: string) => Promise<void>;
+  forceReinitializeDatabase: () => Promise<void>;
 
   // 성능 최적화 헬퍼
   loadCards: (grade?: HanjaGrade | null) => Promise<HanjaWordCard[]>;
+
+  // 캐시된 데이터 관리
+  cachedWords: Record<HanjaGrade, HanjaWordCard[]>;
+  clearCache: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -103,6 +108,18 @@ export const useAppStore = create<AppState>()(
       studyMode: 'sequential',
       isDbInitialized: false,
       reverseAnimationTrigger: null,
+
+      // 캐시 초기화
+      cachedWords: {
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+        6: [],
+        7: [],
+        8: [],
+      },
 
       // 카드 스택 관리
       initializeCardStack: async () => {
@@ -519,14 +536,38 @@ export const useAppStore = create<AppState>()(
             gradeToLoad >= 1 &&
             gradeToLoad <= 8
           ) {
-            console.log(`📖 ${gradeToLoad}급 단어 로딩 중...`);
-            return await getWordsByGrade(gradeToLoad as HanjaGrade);
+            const targetGrade = gradeToLoad as HanjaGrade;
+            const { cachedWords } = get();
+
+            // 캐시된 데이터가 있으면 반환 (성능 최적화)
+            if (
+              cachedWords[targetGrade] &&
+              cachedWords[targetGrade].length > 0
+            ) {
+              console.log(
+                `🚀 ${targetGrade}급 캐시된 단어 ${cachedWords[targetGrade].length}개 반환`
+              );
+              return cachedWords[targetGrade];
+            }
+
+            console.log(`📖 ${targetGrade}급 단어 로딩 중...`);
+            const words = await getWordsByGrade(targetGrade);
+
+            // 캐시에 저장
+            set(state => ({
+              cachedWords: {
+                ...state.cachedWords,
+                [targetGrade]: words,
+              },
+            }));
+
+            return words;
           } else {
             // 전체 급수 로딩 (grade가 유효하지 않은 경우)
             console.log('📖 전체 급수 단어 로딩 중...');
             const allWords: HanjaWordCard[] = [];
             for (let g = 8; g >= 1; g--) {
-              const words = await getWordsByGrade(g as HanjaGrade);
+              const words = await get().loadCards(g as HanjaGrade);
               allWords.push(...words);
             }
             return allWords;
@@ -552,6 +593,63 @@ export const useAppStore = create<AppState>()(
           console.error('❌ 데이터베이스 통계 조회 실패:', error);
           throw error;
         }
+      },
+
+      // 데이터베이스 강제 재초기화 (디버깅용)
+      forceReinitializeDatabase: async () => {
+        console.log('🔄 데이터베이스 강제 재초기화 시작...');
+        set({ isLoading: true, isDbInitialized: false });
+
+        try {
+          // 데이터베이스 재초기화
+          console.log('📦 데이터베이스 재초기화 중...');
+          await initializeDatabase();
+          console.log('✅ 데이터베이스 초기화 완료');
+
+          console.log('🔄 시드 데이터 재마이그레이션 시작...');
+          await migrateDataToSQLite();
+          console.log('✅ 데이터 재마이그레이션 완료');
+
+          // 데이터베이스 검증
+          console.log('🔍 데이터베이스 재검증 중...');
+          const testWords = await getWordsByGrade(8);
+          console.log(`📊 8급 단어 ${testWords.length}개 확인`);
+
+          if (testWords.length === 0) {
+            throw new Error('8급 단어가 데이터베이스에 없습니다');
+          }
+
+          set({ isDbInitialized: true });
+          console.log('🎉 데이터베이스 재초기화 성공!');
+
+          // 캐시 초기화 후 카드 스택 재초기화
+          get().clearCache();
+          await get().initializeCardStack();
+          console.log('✅ 앱 재초기화 완료');
+        } catch (error) {
+          console.error('❌ 데이터베이스 재초기화 실패:', error);
+          set({ isDbInitialized: false });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // 캐시 초기화 함수 (성능 최적화)
+      clearCache: () => {
+        console.log('🧹 캐시 초기화');
+        set({
+          cachedWords: {
+            1: [],
+            2: [],
+            3: [],
+            4: [],
+            5: [],
+            6: [],
+            7: [],
+            8: [],
+          },
+        });
       },
     }),
     {

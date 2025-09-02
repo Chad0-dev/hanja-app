@@ -1,58 +1,85 @@
-# 한자 데이터 임포트 시스템
+# 한자 앱 데이터 관리 스크립트
 
 ## 📋 개요
 
-정확한 한자 데이터를 CSV 형태로 받아서 TypeScript 코드로 변환하는 자동화 시스템입니다.
+한자 학습 앱의 데이터 관리를 위한 Node.js 스크립트 모음입니다.
+CSV 파일에서 TypeScript 데이터 파일을 생성하고 데이터 무결성을 관리합니다.
 
-## 🗂️ 파일 구조
+## 🗂️ 현재 스크립트
 
-```
-scripts/
-├── importHanjaData.js     # 메인 임포트 스크립트
-├── package.json           # 의존성 관리
-├── README.md             # 이 파일
-└── data/                 # CSV 데이터 파일들
-    ├── characters.csv    # 한자 캐릭터 데이터
-    └── words.csv         # 한자 단어 데이터
-```
+### 📊 데이터 생성 스크립트
 
-## 📝 CSV 파일 형식
+- **`generateCharacterData.js`**: 급수별 한자 CSV → `characterData.ts` 생성
+- **`generateWordDataPartial.js`**: 단어 CSV + 한자 데이터 매칭 → `wordData.ts` 생성
 
-### characters.csv
+### 🔧 유틸리티 스크립트
 
-```csv
-id,character,pronunciation,meaning,strokeCount,radical,radicalName,radicalStrokes
-example,例,예,예시,8,人,사람인,2
-```
+- **`analyzeMissingCharacters.js`**: 누락된 한자 분석 및 통계
+- **`addFinalMissingCharacters.js`**: 최종 누락 한자 추가
+- **`updateCharacterInfo.js`**: 한자 정보 업데이트
+- **`findRemainingMissingCharacters.js`**: 남은 누락 한자 검색
 
-### words.csv
+### 🗄️ 데이터 파일
 
-```csv
-id,word,pronunciation,meaning,characterIds,grade,leftSwipe,rightSwipe
-example_word,例示,예시,예를 들어 보임,example;show,8,word1;word2,word3;word4
-```
+- **`data/characters.csv`**: 기본 한자 데이터 (참고용)
+- **`data/words.csv`**: 기본 단어 데이터 (참고용)
 
 ## 🚀 사용법
 
-1. **정확한 한자 데이터를 준비**합니다
-2. **CSV 파일**을 `data/` 폴더에 배치합니다
-3. **임포트 실행**:
-   ```bash
-   npm run import
-   ```
+### 기본 데이터 생성 워크플로우
 
-## ⚠️ 주의사항
+```bash
+# 1. 한자 데이터 생성
+node scripts/generateCharacterData.js
 
-- **정확성이 최우선**입니다
-- 모든 한자 데이터는 **신뢰할 수 있는 출처**에서 가져와야 합니다
-- CSV 형식을 **정확히** 맞춰주세요
+# 2. 단어 데이터 생성 (한자 데이터 생성 후 실행)
+node scripts/generateWordDataPartial.js
 
-## 🔄 현재 상태
+# 3. 앱에서 데이터 재초기화
+# 개발자 콘솔에서: hanjaDebug.appReset()
+```
 
-- 데이터베이스: **초기화됨** (깨끗한 상태)
-- seedData.ts: **기본 예시 데이터만** 포함
-- 정확한 데이터 임포트 **대기 중**
+### 데이터 분석 및 디버깅
 
-## 📞 문의
+```bash
+# 누락된 한자 분석
+node scripts/analyzeMissingCharacters.js
 
-정확한 한자 데이터를 준비해주시면 언제든 임포트할 수 있습니다!
+# 남은 누락 한자 찾기
+node scripts/findRemainingMissingCharacters.js
+```
+
+## 📁 데이터 소스
+
+### 입력 파일 (../src/data/)
+
+- `grade[3-8]_characters.csv`: 급수별 한자 데이터
+- `grade[3-8]_words.csv`: 급수별 완성 단어 데이터
+
+### 출력 파일 (../src/data/)
+
+- `characterData.ts`: 모든 한자 데이터 (TypeScript)
+- `wordData.ts`: 모든 완성 단어 데이터 (TypeScript)
+
+## 🔄 데이터 흐름
+
+```
+CSV 파일들 → generateCharacterData.js → characterData.ts
+     ↓
+단어 CSV들 → generateWordDataPartial.js → wordData.ts
+     ↓
+앱 로드 → SQLite 데이터베이스 저장
+```
+
+## ✅ 현재 상태
+
+- **한자 데이터**: 1948개 (완료)
+- **완성 단어**: 789개 (완료)
+- **매칭률**: 99.8% (완료)
+- **데이터베이스**: CSV 기반 시스템으로 완전 전환
+
+## 📝 참고사항
+
+- 모든 스크립트는 프로젝트 루트에서 실행해야 합니다
+- 데이터 변경 후 반드시 앱에서 `hanjaDebug.appReset()` 실행
+- 백업 파일들은 자동으로 생성됩니다
