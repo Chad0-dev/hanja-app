@@ -11,7 +11,7 @@ import { useAppStore } from '@/src/stores/useAppStore';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const { canGoBack, goBackToPreviousCard } = useAppStore();
+  const { canGoBack, goBackToPreviousCard, isLeftHanded } = useAppStore();
 
   const handleUndoPress = () => {
     if (canGoBack) {
@@ -21,46 +21,43 @@ export default function TabLayout() {
     }
   };
 
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}
-    >
+  // 왼손잡이 모드에 따라 탭 순서 결정
+  const renderTabs = () => {
+    const exploreTab = (
       <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
+        key="explore"
         name="explore"
         options={{
-          title: 'Explore',
+          title: '',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
+            <IconSymbol size={32} name="chart.bar.fill" color={color} />
           ),
         }}
       />
+    );
+
+    const homeTab = (
       <Tabs.Screen
+        key="index"
+        name="index"
+        options={{
+          title: '',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={32} name="house.fill" color={color} />
+          ),
+        }}
+      />
+    );
+
+    const undoTab = (
+      <Tabs.Screen
+        key="undo"
         name="undo"
         options={{
-          title: '뒤로가기',
+          title: '',
           tabBarIcon: ({ color }) => (
             <IconSymbol
-              size={28}
+              size={32}
               name="arrow.uturn.left"
               color={canGoBack ? color : '#ccc'}
             />
@@ -74,6 +71,43 @@ export default function TabLayout() {
               {props.children}
             </TouchableOpacity>
           ),
+        }}
+      />
+    );
+
+    // 왼손잡이 모드: 뒤로가기 - 홈 - 학습정보
+    // 오른손잡이 모드: 학습정보 - 홈 - 뒤로가기
+    return isLeftHanded
+      ? [undoTab, homeTab, exploreTab]
+      : [exploreTab, homeTab, undoTab];
+  };
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
+        tabBarBackground: TabBarBackground,
+        tabBarStyle: Platform.select({
+          ios: {
+            // Use a transparent background on iOS to show the blur effect
+            position: 'absolute',
+            paddingTop: 10,
+          },
+          default: {
+            paddingTop: 10,
+          },
+        }),
+      }}
+    >
+      {renderTabs()}
+
+      {/* 숨겨진 설정 탭 - 하단 네비게이션에는 표시되지 않음 */}
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null, // 하단 탭바에서 숨김
+          title: '',
         }}
       />
     </Tabs>

@@ -7,6 +7,7 @@ export { CardDeck } from './CardDeck';
 export { DeckCard } from './DeckCard';
 export { DragonCharacter } from './DragonCharacter';
 export { FlippableHanjaCard } from './FlippableHanjaCard';
+export { GradeSelector } from './GradeSelector';
 export { HamburgerMenu } from './HamburgerMenu';
 
 // UI Kit

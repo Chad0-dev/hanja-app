@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -10,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useAppStore } from '../stores/useAppStore';
+import { GradeSelector } from './GradeSelector';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -20,16 +22,23 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { id: 'grade-selection', title: '급수 선택' },
-  { id: 'study-records', title: '학습 기록' },
-  { id: 'favorites', title: '즐겨찾기' },
+  { id: 'hanja-quiz', title: '한자 문제' },
+  { id: 'word-book', title: '단어장' },
   { id: 'settings', title: '설정' },
   { id: 'help', title: '도움말' },
 ];
 
 export const HamburgerMenu: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const { selectedGrade, setSelectedGrade, initializeCardStack } =
-    useAppStore();
+  const [isGradeSelectorVisible, setIsGradeSelectorVisible] = useState(false);
+  const router = useRouter();
+  const {
+    selectedGrade,
+    selectedGrades,
+    setSelectedGrade,
+    setSelectedGrades,
+    initializeCardStack,
+  } = useAppStore();
 
   const openMenu = () => {
     setIsVisible(true);
@@ -43,8 +52,11 @@ export const HamburgerMenu: React.FC = () => {
     console.log(`메뉴 선택: ${item.title}`);
 
     if (item.id === 'grade-selection') {
-      // 급수 선택 기능 구현
-      showGradeSelection();
+      // 새로운 다중 급수 선택 UI 표시
+      setIsGradeSelectorVisible(true);
+    } else if (item.id === 'settings') {
+      // 설정 페이지로 이동
+      router.push('/(tabs)/settings');
     } else {
       // 다른 메뉴 아이템들
       Alert.alert('알림', `${item.title} 기능은 준비 중입니다.`);
@@ -77,6 +89,27 @@ export const HamburgerMenu: React.FC = () => {
       Alert.alert('완료', `${grade}급 한자 학습으로 변경되었습니다.`);
     } catch (error) {
       console.error('급수 변경 실패:', error);
+      Alert.alert('오류', '급수 변경에 실패했습니다.');
+    }
+  };
+
+  // 다중 급수 선택 핸들러
+  const handleGradeChange = (grades: number[]) => {
+    console.log(`다중 급수 변경: ${grades.join(', ')}급`);
+    setSelectedGrades(grades as any[]);
+  };
+
+  const handleGradeConfirm = async () => {
+    try {
+      console.log('다중 급수 적용 중...');
+      await initializeCardStack();
+      const gradeText =
+        selectedGrades.length > 1
+          ? `${selectedGrades.join(', ')}급 (다중 선택)`
+          : `${selectedGrades[0]}급`;
+      console.log(`완료: ${gradeText} 한자 학습으로 변경되었습니다.`);
+    } catch (error) {
+      console.error('다중 급수 변경 실패:', error);
       Alert.alert('오류', '급수 변경에 실패했습니다.');
     }
   };
@@ -131,6 +164,15 @@ export const HamburgerMenu: React.FC = () => {
           ))}
         </View>
       </Modal>
+
+      {/* 다중 급수 선택 모달 */}
+      <GradeSelector
+        visible={isGradeSelectorVisible}
+        onClose={() => setIsGradeSelectorVisible(false)}
+        selectedGrades={selectedGrades}
+        onGradeChange={handleGradeChange}
+        onConfirm={handleGradeConfirm}
+      />
     </>
   );
 };

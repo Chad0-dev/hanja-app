@@ -219,7 +219,31 @@ export const getWordsByGrade = async (
     console.log(`📊 ${grade}급: ${result.length}개 단어 조회됨`);
 
     const words: HanjaWordCard[] = result.map((row: any) => {
-      const characters = parseCharactersData(row.characters_data);
+      let characters = parseCharactersData(row.characters_data);
+
+      // 🔧 한자 순서 보정: 실제 단어 순서와 맞추기
+      if (characters.length > 1 && row.word) {
+        const wordChars = row.word.split('');
+        const reorderedChars: typeof characters = [];
+
+        // 단어의 각 한자 순서대로 매칭
+        for (let i = 0; i < wordChars.length; i++) {
+          const wordChar = wordChars[i];
+          const matchingChar = characters.find(c => c.character === wordChar);
+          if (matchingChar) {
+            reorderedChars.push(matchingChar);
+          }
+        }
+
+        // 매칭되지 않은 한자들도 추가 (안전장치)
+        characters.forEach(char => {
+          if (!reorderedChars.find(rc => rc.character === char.character)) {
+            reorderedChars.push(char);
+          }
+        });
+
+        characters = reorderedChars;
+      }
 
       // 디버깅: 한자가 없는 단어 로그
       if (characters.length === 0) {
@@ -490,9 +514,6 @@ const parseCharactersData = (charactersData: string): HanjaCharacter[] => {
       });
     }
 
-    console.log(
-      `✅ parseCharactersData: ${characters.length}개 한자 파싱 완료`
-    );
     return characters;
   } catch (error) {
     console.error('❌ parseCharactersData 파싱 에러:', error);

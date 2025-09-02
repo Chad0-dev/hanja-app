@@ -20,6 +20,7 @@ export default function HomeScreen() {
     initializeCardStack,
     swipeLeft,
     swipeRight,
+    handleSwipeToRelatedWord, // 새로운 연관단어 스와이프 함수
     setReverseAnimationTrigger,
   } = useAppStore();
 
@@ -61,26 +62,29 @@ export default function HomeScreen() {
   }, [initializeCardStack]);
 
   /**
-   * 왼쪽 스와이프 핸들러 (거부/다음)
+   * 왼쪽 스와이프 핸들러 (학습 완료 + 연관단어)
    */
   const handleSwipeLeft = (card: any) => {
-    // ★★★★★ 동시에 진행되는 애니메이션 ★★★★★
-    // 1번째 카드 사라지는 애니메이션과 2번째 카드 팝업 애니메이션이 동시에 시작
-    // 아주 짧은 딜레이로 애니메이션 시작 타이밍 맞춤
+    // ★★★★★ 새로운 연관단어 로직 ★★★★★
+    // 현재 카드의 첫 번째 한자와 연관된 단어를 찾아서 다음 카드로 설정
     setTimeout(() => {
-      swipeLeft();
-    }, 30); // 500ms → 30ms (거의 즉시 시작)
+      if (currentCard) {
+        handleSwipeToRelatedWord(currentCard, 'left');
+      }
+    }, 30);
   };
 
   /**
-   * 오른쪽 스와이프 핸들러 (학습/저장)
+   * 오른쪽 스와이프 핸들러 (저장 + 연관단어)
    */
   const handleSwipeRight = (card: any) => {
-    // ★★★★★ 동시에 진행되는 애니메이션 ★★★★★
-    // 1번째 카드 사라지는 애니메이션과 2번째 카드 팝업 애니메이션이 동시에 시작
+    // ★★★★★ 새로운 연관단어 로직 ★★★★★
+    // 현재 카드의 마지막 한자와 연관된 단어를 찾아서 다음 카드로 설정
     setTimeout(() => {
-      swipeRight();
-    }, 30); // 500ms → 30ms (거의 즉시 시작)
+      if (currentCard) {
+        handleSwipeToRelatedWord(currentCard, 'right');
+      }
+    }, 30);
   };
 
   // 로딩 중이거나 카드가 없을 때는 로딩 화면 표시
