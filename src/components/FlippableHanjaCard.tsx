@@ -369,16 +369,45 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
                 {/* 구성 한자들 정보 */}
                 <View style={styles.charactersContainer}>
                   <Text style={styles.charactersTitle}>구성 한자:</Text>
-                  {card.characters.map((char, index) => (
-                    <View key={char.id} style={styles.characterInfo}>
-                      <Text style={styles.characterText}>
-                        {char.character} {char.meaning} {char.pronunciation}
-                      </Text>
-                      <Text style={styles.characterDetails}>
-                        {char.strokeCount}획, {char.radicalName}({char.radical})
-                      </Text>
-                    </View>
-                  ))}
+                  {(() => {
+                    // 한자 순서를 단어 순서에 맞게 정렬
+                    const wordChars = card.word.split('');
+                    const orderedChars = [];
+
+                    // 단어의 각 한자 순서대로 매칭
+                    for (let i = 0; i < wordChars.length; i++) {
+                      const wordChar = wordChars[i];
+                      const matchingChar = card.characters.find(
+                        c => c.character === wordChar
+                      );
+                      if (matchingChar) {
+                        orderedChars.push(matchingChar);
+                      }
+                    }
+
+                    // 매칭되지 않은 한자들도 추가 (안전장치)
+                    card.characters.forEach(char => {
+                      if (
+                        !orderedChars.find(
+                          oc => oc.character === char.character
+                        )
+                      ) {
+                        orderedChars.push(char);
+                      }
+                    });
+
+                    return orderedChars.map((char, index) => (
+                      <View key={char.id} style={styles.characterInfo}>
+                        <Text style={styles.characterText}>
+                          {char.character} {char.meaning} {char.pronunciation}
+                        </Text>
+                        <Text style={styles.characterDetails}>
+                          {char.strokeCount}획, {char.radicalName}(
+                          {char.radical})
+                        </Text>
+                      </View>
+                    ));
+                  })()}
                 </View>
 
                 <Text style={styles.tapHint}>탭하여 뒤집기</Text>

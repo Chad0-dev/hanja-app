@@ -55,6 +55,9 @@ export const HamburgerMenu: React.FC = () => {
     } else if (item.id === 'settings') {
       // 설정 페이지로 이동
       router.push('/(tabs)/settings');
+    } else if (item.id === 'word-book') {
+      // 단어장 페이지로 이동
+      router.push('/(tabs)/wordbook');
     } else {
       // 다른 메뉴 아이템들
       Alert.alert('알림', `${item.title} 기능은 준비 중입니다.`);

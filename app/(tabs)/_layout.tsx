@@ -110,6 +110,15 @@ export default function TabLayout() {
           title: '',
         }}
       />
+
+      {/* 숨겨진 단어장 탭 - 하단 네비게이션에는 표시되지 않음 */}
+      <Tabs.Screen
+        name="wordbook"
+        options={{
+          href: null, // 하단 탭바에서 숨김
+          title: '',
+        }}
+      />
     </Tabs>
   );
 }

@@ -219,31 +219,10 @@ export const getWordsByGrade = async (
     console.log(`📊 ${grade}급: ${result.length}개 단어 조회됨`);
 
     const words: HanjaWordCard[] = result.map((row: any) => {
-      let characters = parseCharactersData(row.characters_data);
-
-      // 🔧 한자 순서 보정: 실제 단어 순서와 맞추기
-      if (characters.length > 1 && row.word) {
-        const wordChars = row.word.split('');
-        const reorderedChars: typeof characters = [];
-
-        // 단어의 각 한자 순서대로 매칭
-        for (let i = 0; i < wordChars.length; i++) {
-          const wordChar = wordChars[i];
-          const matchingChar = characters.find(c => c.character === wordChar);
-          if (matchingChar) {
-            reorderedChars.push(matchingChar);
-          }
-        }
-
-        // 매칭되지 않은 한자들도 추가 (안전장치)
-        characters.forEach(char => {
-          if (!reorderedChars.find(rc => rc.character === char.character)) {
-            reorderedChars.push(char);
-          }
-        });
-
-        characters = reorderedChars;
-      }
+      const characters = reorderCharactersByWord(
+        parseCharactersData(row.characters_data),
+        row.word
+      );
 
       // 디버깅: 한자가 없는 단어 로그
       if (characters.length === 0) {
@@ -315,7 +294,10 @@ export const getWordsByMemorized = async (
       meaning: row.meaning,
       grade: row.grade as HanjaGrade,
       isMemorized: Boolean(row.isMemorized),
-      characters: parseCharactersData(row.characters_data),
+      characters: reorderCharactersByWord(
+        parseCharactersData(row.characters_data),
+        row.word
+      ),
       relatedWords: {
         leftSwipe: row.leftSwipeWords ? JSON.parse(row.leftSwipeWords) : [],
         rightSwipe: row.rightSwipeWords ? JSON.parse(row.rightSwipeWords) : [],
@@ -373,7 +355,10 @@ export const getWordsByCharacter = async (
       meaning: row.meaning,
       grade: row.grade as HanjaGrade,
       isMemorized: Boolean(row.isMemorized),
-      characters: parseCharactersData(row.characters_data),
+      characters: reorderCharactersByWord(
+        parseCharactersData(row.characters_data),
+        row.word
+      ),
       relatedWords: {
         leftSwipe: row.leftSwipeWords ? JSON.parse(row.leftSwipeWords) : [],
         rightSwipe: row.rightSwipeWords ? JSON.parse(row.rightSwipeWords) : [],
@@ -461,6 +446,59 @@ export const getGradeStatistics = async (): Promise<
     console.error('❌ 급수별 통계 조회 실패:', error);
     throw error;
   }
+};
+
+/**
+ * 한자 순서를 실제 단어 순서와 맞추는 함수
+ */
+const reorderCharactersByWord = (
+  characters: HanjaCharacter[],
+  word: string
+): HanjaCharacter[] => {
+  // 한자가 1개거나 단어가 없으면 그대로 반환
+  if (characters.length <= 1 || !word) {
+    return characters;
+  }
+
+  const wordChars = word.split('');
+  const reorderedChars: HanjaCharacter[] = [];
+
+  // 디버깅: 특정 단어만 로그
+  const originalOrder = characters.map(c => c.character);
+
+  // 디버깅 제거
+  if (false) {
+    console.log(`🔍 특별 분석: ${word}`);
+  }
+
+  const isOrderDifferent =
+    originalOrder.length > 1 &&
+    !originalOrder.every((char, index) => char === wordChars[index]);
+
+  // 단어의 각 한자 순서대로 매칭
+  for (let i = 0; i < wordChars.length; i++) {
+    const wordChar = wordChars[i];
+    const matchingChar = characters.find(c => c.character === wordChar);
+    if (matchingChar) {
+      reorderedChars.push(matchingChar);
+    }
+  }
+
+  // 매칭되지 않은 한자들도 추가 (안전장치)
+  characters.forEach(char => {
+    if (!reorderedChars.find(rc => rc.character === char.character)) {
+      reorderedChars.push(char);
+    }
+  });
+
+  // 디버깅: 순서 보정 후 상태 로그
+  if (isOrderDifferent) {
+    console.log(
+      `✅ 보정 결과: [${reorderedChars.map(c => c.character).join(', ')}]`
+    );
+  }
+
+  return reorderedChars;
 };
 
 /**
