@@ -160,8 +160,6 @@ export const useAppStore = create<AppState>()(
                 ? [selectedGrade]
                 : [8];
 
-          console.log(`🎯 ${gradesToLoad.join(', ')}급 카드 스택 초기화 중...`);
-
           // 하위 호환성: selectedGrades가 비어있으면 selectedGrade 기반으로 설정
           if (selectedGrades.length === 0 && selectedGrade) {
             set({ selectedGrades: [selectedGrade] });
@@ -176,10 +174,6 @@ export const useAppStore = create<AppState>()(
               gradesToLoad as HanjaGrade[],
               50 // 초기 카드 스택 크기
             );
-
-          console.log(
-            `📚 ${availableCards.length}개 카드 로드됨 (${gradesToLoad.join(', ')}급)`
-          );
 
           if (availableCards.length === 0) {
             console.warn('⚠️ 사용 가능한 카드가 없습니다');
@@ -204,10 +198,6 @@ export const useAppStore = create<AppState>()(
             currentCardIndex: 0,
             currentCard: firstCard,
           });
-
-          console.log(
-            `✅ 카드 스택 초기화 완료 - 시작 카드: ${firstCard.word} (${firstCard.grade}급)`
-          );
         } catch (error) {
           console.error('❌ 카드 스택 초기화 실패:', error);
           set({ cardStack: [], currentCardIndex: 0, currentCard: null });
@@ -320,10 +310,6 @@ export const useAppStore = create<AppState>()(
         swipeDirection: 'left' | 'right'
       ) => {
         try {
-          console.log(
-            `🔗 연관단어 스와이프: ${currentCard.word} → ${swipeDirection}`
-          );
-
           const {
             selectedGrades,
             cardHistory,
@@ -369,8 +355,6 @@ export const useAppStore = create<AppState>()(
 
           // 4. 연관단어가 있으면 다음 카드로 설정, 없으면 기존 로직 사용
           if (relatedWord) {
-            console.log(`✅ 연관단어 발견: ${relatedWord.word}`);
-
             // recentCardIds와 recentCardWords 업데이트 (최대 10개 유지)
             const updatedRecentIds = [
               currentCard.id,
@@ -394,8 +378,6 @@ export const useAppStore = create<AppState>()(
               recentCardWords: updatedRecentWords,
             });
           } else {
-            console.log('⚠️ 연관단어 없음 - 일반 다음 카드로 이동');
-
             // 연관단어가 없으면 기존 방식으로 다음 카드 이동
             get().moveToNextCard();
           }
@@ -578,10 +560,8 @@ export const useAppStore = create<AppState>()(
         // 실제 데이터베이스 상태 검증 (상태만으로는 신뢰할 수 없음)
         if (isDbInitialized) {
           try {
-            console.log('🔍 실제 데이터베이스 상태 검증 중...');
             const testWords = await getWordsByGrade(8);
             if (testWords.length > 0) {
-              console.log('✅ 데이터베이스 검증 성공 - 카드 스택만 초기화');
               await get().initializeCardStack();
               return;
             } else {
@@ -597,32 +577,22 @@ export const useAppStore = create<AppState>()(
         set({ isLoading: true });
 
         try {
-          console.log('🚀 앱 초기화 시작 (SQLite 전용 모드)...');
-
           // SQLite 강제 초기화
-          console.log('📦 데이터베이스 강제 초기화 중...');
           await initializeDatabase();
-          console.log('✅ 데이터베이스 초기화 완료');
 
-          console.log('🔄 시드 데이터 마이그레이션 시작...');
           await migrateDataToSQLite();
-          console.log('✅ 데이터 마이그레이션 완료');
 
           // 데이터베이스 검증
-          console.log('🔍 데이터베이스 검증 중...');
           const testWords = await getWordsByGrade(8);
-          console.log(`📊 8급 단어 ${testWords.length}개 확인`);
 
           if (testWords.length === 0) {
             throw new Error('8급 단어가 데이터베이스에 없습니다');
           }
 
           set({ isDbInitialized: true });
-          console.log('🎉 SQLite 모드로 초기화 성공!');
 
           // 카드 스택 초기화
           await get().initializeCardStack();
-          console.log('✅ 앱 초기화 완료');
         } catch (error) {
           console.error('❌ 앱 초기화 실패:', error);
           set({ isDbInitialized: false });

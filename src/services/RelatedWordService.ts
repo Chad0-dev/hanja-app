@@ -33,26 +33,14 @@ export class RelatedWordService {
         recentWords = [],
       } = options;
 
-      console.log(
-        `🔍 연관단어 검색 시작: ${currentCard.word} (${swipeDirection}) | 제외할 최근 단어: ${excludeRecentIds.length}개`
-      );
-
       // 스와이프 방향에 따라 대상 한자 결정
       const targetCharacter = this.getTargetCharacter(
         currentCard,
         swipeDirection
       );
       if (!targetCharacter) {
-        console.log('❌ 대상 한자를 찾을 수 없습니다');
         return null;
       }
-
-      console.log(
-        `🎯 대상 한자: ${targetCharacter.character} (${targetCharacter.pronunciation})`
-      );
-      console.log(
-        `📋 전체 한자: [${currentCard.characters.map(c => c.character).join(', ')}] | ${swipeDirection} → ${swipeDirection === 'left' ? '첫번째' : '마지막'} 한자`
-      );
 
       // 1. 같은 한자가 포함된 단어 찾기
       let relatedWords = await this.findWordsWithSameCharacter(
@@ -65,9 +53,6 @@ export class RelatedWordService {
       );
 
       if (relatedWords.length > 0) {
-        console.log(
-          `✅ 같은 한자 단어 ${relatedWords.length}개 발견 (${targetCharacter.character} 기준)`
-        );
         return this.selectRandomWord(relatedWords);
       }
 
@@ -82,14 +67,10 @@ export class RelatedWordService {
       );
 
       if (relatedWords.length > 0) {
-        console.log(
-          `✅ 같은 부수 단어 ${relatedWords.length}개 발견 (${targetCharacter.radical}부 기준)`
-        );
         return this.selectRandomWord(relatedWords);
       }
 
       // 3. 연관성이 없으면 null 반환 (랜덤 단어는 상위에서 처리)
-      console.log('⚠️ 연관단어를 찾을 수 없습니다');
       return null;
     } catch (error) {
       console.error('❌ 연관단어 검색 실패:', error);

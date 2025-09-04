@@ -49,8 +49,6 @@ export const HamburgerMenu: React.FC = () => {
   };
 
   const handleMenuItemPress = (item: MenuItem) => {
-    console.log(`메뉴 선택: ${item.title}`);
-
     if (item.id === 'grade-selection') {
       // 새로운 다중 급수 선택 UI 표시
       setIsGradeSelectorVisible(true);
@@ -83,7 +81,6 @@ export const HamburgerMenu: React.FC = () => {
 
   const selectGrade = async (grade: number) => {
     try {
-      console.log(`${grade}급으로 변경 중...`);
       setSelectedGrade(grade as any);
       await initializeCardStack();
       Alert.alert('완료', `${grade}급 한자 학습으로 변경되었습니다.`);
@@ -95,19 +92,16 @@ export const HamburgerMenu: React.FC = () => {
 
   // 다중 급수 선택 핸들러
   const handleGradeChange = (grades: number[]) => {
-    console.log(`다중 급수 변경: ${grades.join(', ')}급`);
     setSelectedGrades(grades as any[]);
   };
 
   const handleGradeConfirm = async () => {
     try {
-      console.log('다중 급수 적용 중...');
       await initializeCardStack();
       const gradeText =
         selectedGrades.length > 1
           ? `${selectedGrades.join(', ')}급 (다중 선택)`
           : `${selectedGrades[0]}급`;
-      console.log(`완료: ${gradeText} 한자 학습으로 변경되었습니다.`);
     } catch (error) {
       console.error('다중 급수 변경 실패:', error);
       Alert.alert('오류', '급수 변경에 실패했습니다.');

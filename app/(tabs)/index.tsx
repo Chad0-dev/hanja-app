@@ -1,6 +1,6 @@
 import { CardDeck, DragonCharacter, HamburgerMenu } from '@/src/components';
 import { useAppStore } from '@/src/stores/useAppStore';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ImageBackground, StyleSheet, Text, View } from 'react-native';
 
 export default function HomeScreen() {
@@ -8,6 +8,8 @@ export default function HomeScreen() {
   const [reverseDirection, setReverseDirection] = React.useState<
     'left' | 'right'
   >('right');
+
+  const [forceUpdateDragon, setForceUpdateDragon] = useState(0); // 드래곤 강제 업데이트용
 
   // Zustand 스토어에서 상태와 액션들 가져오기
   const {
@@ -67,9 +69,15 @@ export default function HomeScreen() {
   const handleSwipeLeft = (card: any) => {
     // ★★★★★ 새로운 연관단어 로직 ★★★★★
     // 현재 카드의 첫 번째 한자와 연관된 단어를 찾아서 다음 카드로 설정
+
+    // 🐉 스와이프할 때마다 바로 드래곤 변경 (강제 업데이트)
+    setForceUpdateDragon(prev => prev + 1);
+
     setTimeout(() => {
       if (currentCard) {
         handleSwipeToRelatedWord(currentCard, 'left');
+      } else {
+        console.warn('⚠️ currentCard가 null입니다 - Left 스와이프 무시');
       }
     }, 30);
   };
@@ -80,9 +88,15 @@ export default function HomeScreen() {
   const handleSwipeRight = (card: any) => {
     // ★★★★★ 새로운 연관단어 로직 ★★★★★
     // 현재 카드의 마지막 한자와 연관된 단어를 찾아서 다음 카드로 설정
+
+    // 🐉 스와이프할 때마다 바로 드래곤 변경 (강제 업데이트)
+    setForceUpdateDragon(prev => prev + 1);
+
     setTimeout(() => {
       if (currentCard) {
         handleSwipeToRelatedWord(currentCard, 'right');
+      } else {
+        console.warn('⚠️ currentCard가 null입니다 - Right 스와이프 무시');
       }
     }, 30);
   };
@@ -124,7 +138,7 @@ export default function HomeScreen() {
 
               {/* Dragon 캐릭터 - 카드 변화에 따라 변함 */}
               <DragonCharacter
-                cardIndex={currentCardIndex}
+                cardIndex={currentCardIndex + forceUpdateDragon} // 강제 업데이트 추가
                 style={styles.dragonCharacter}
               />
 

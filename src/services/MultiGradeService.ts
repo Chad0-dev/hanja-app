@@ -36,13 +36,8 @@ export class MultiGradeService {
     // 캐시된 데이터가 있으면 반환
     if (this.gradeWordsCache.has(cacheKey)) {
       const cachedWords = this.gradeWordsCache.get(cacheKey)!;
-      console.log(
-        `📚 캐시에서 ${grades.join(',')}급 단어 ${cachedWords.length}개 로드`
-      );
       return cachedWords;
     }
-
-    console.log(`🔍 ${grades.join(',')}급 단어 데이터베이스에서 조회 중...`);
 
     try {
       // 각 급수별로 단어를 조회하고 합치기
@@ -51,13 +46,10 @@ export class MultiGradeService {
       for (const grade of grades) {
         const gradeWords = await getWordsByGrade(grade);
         allWords.push(...gradeWords);
-        console.log(`📖 ${grade}급: ${gradeWords.length}개 단어`);
       }
 
       // 중복 제거 (같은 ID의 단어가 있을 수 있음)
       const uniqueWords = this.removeDuplicateWords(allWords);
-
-      console.log(`✅ 총 ${uniqueWords.length}개 단어 (중복 제거 후)`);
 
       // 캐시에 저장
       this.gradeWordsCache.set(cacheKey, uniqueWords);
@@ -95,8 +87,6 @@ export class MultiGradeService {
     const randomIndex = Math.floor(Math.random() * availableWords.length);
     const selectedWord = availableWords[randomIndex];
 
-    console.log(`🎲 랜덤 선택: ${selectedWord.word} (${selectedWord.grade}급)`);
-
     return selectedWord;
   }
 
@@ -131,8 +121,6 @@ export class MultiGradeService {
     }
 
     const selectedWords = shuffled.slice(0, Math.min(count, shuffled.length));
-
-    console.log(`🎲 랜덤 선택: ${selectedWords.length}개 단어`);
 
     return selectedWords;
   }
@@ -186,7 +174,6 @@ export class MultiGradeService {
    * 캐시 초기화
    */
   clearCache(): void {
-    console.log('🧹 MultiGradeService 캐시 초기화');
     this.gradeWordsCache.clear();
   }
 }
