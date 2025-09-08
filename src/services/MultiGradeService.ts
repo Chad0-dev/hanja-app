@@ -31,7 +31,15 @@ export class MultiGradeService {
     }
 
     // 캐시 키 생성 (정렬된 급수들로)
-    const cacheKey = grades.sort((a, b) => a - b).join(',');
+    const cacheKey = grades
+      .sort((a, b) => {
+        const aNum =
+          typeof a === 'string' ? parseInt(a.replace('급', ''), 10) : a;
+        const bNum =
+          typeof b === 'string' ? parseInt(b.replace('급', ''), 10) : b;
+        return aNum - bNum;
+      })
+      .join(',');
 
     // 캐시된 데이터가 있으면 반환
     if (this.gradeWordsCache.has(cacheKey)) {

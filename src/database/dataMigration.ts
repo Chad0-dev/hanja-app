@@ -136,7 +136,9 @@ const insertWordsFromData = async (
           word.word,
           word.pronunciation,
           word.meaning,
-          word.grade,
+          typeof word.grade === 'string'
+            ? parseInt(word.grade.replace('급', ''), 10)
+            : word.grade,
           word.isMemorized ? 1 : 0,
           JSON.stringify(word.relatedWords.leftSwipe),
           JSON.stringify(word.relatedWords.rightSwipe),

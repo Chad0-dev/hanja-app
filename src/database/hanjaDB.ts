@@ -193,7 +193,11 @@ export const getWordsByGrade = async (
   }
 
   try {
-    console.log(`🔍 ${grade}급 단어 조회 시작...`);
+    console.log(`🔍 ${grade} 단어 조회 시작...`);
+
+    // HanjaGrade 타입 ("3급", "8급" 등)을 숫자로 변환
+    const gradeNumber =
+      typeof grade === 'string' ? parseInt(grade.replace('급', ''), 10) : grade;
 
     const result = await db.getAllAsync(
       `SELECT w.*, 
@@ -213,10 +217,10 @@ export const getWordsByGrade = async (
        WHERE w.grade = ?
        GROUP BY w.id
        ORDER BY w.createdAt`,
-      [grade]
+      [gradeNumber]
     );
 
-    console.log(`📊 ${grade}급: ${result.length}개 단어 조회됨`);
+    console.log(`📊 ${grade}: ${result.length}개 단어 조회됨`);
 
     const words: HanjaWordCard[] = result.map((row: any) => {
       const characters = reorderCharactersByWord(
@@ -247,7 +251,7 @@ export const getWordsByGrade = async (
       };
     });
 
-    console.log(`✅ ${grade}급 단어 파싱 완료: ${words.length}개`);
+    console.log(`✅ ${grade} 단어 파싱 완료: ${words.length}개`);
     return words;
   } catch (error) {
     console.error('❌ 급수별 단어 조회 실패:', error);

@@ -47,6 +47,10 @@ interface AppState {
   isDarkMode: boolean;
   isLeftHanded: boolean;
 
+  // 즐겨찾기 시스템
+  favoriteCharacters: Set<string>; // 즐겨찾기 한자 ID들
+  favoriteWords: Set<string>; // 즐겨찾기 단어 ID들
+
   // 데이터베이스 상태
   isDbInitialized: boolean;
 
@@ -81,6 +85,12 @@ interface AppState {
   recordAnswer: (characterId: string, isCorrect: boolean) => void;
   toggleFavorite: (characterId: string) => void;
   markAsLearned: (characterId: string) => void;
+
+  // 즐겨찾기 액션들
+  toggleFavoriteCharacter: (characterId: string) => void;
+  toggleFavoriteWord: (wordId: string) => void;
+  isFavoriteCharacter: (characterId: string) => boolean;
+  isFavoriteWord: (wordId: string) => boolean;
 
   // 통계 함수들
   getTotalLearned: () => number;
@@ -125,11 +135,13 @@ export const useAppStore = create<AppState>()(
       recentCardIds: [],
       recentCardWords: [],
       studyProgress: [],
-      selectedGrade: 8, // 기본값을 8급으로 설정 (하위 호환성)
-      selectedGrades: [8], // 기본값을 8급으로 설정 (새로운 다중 급수)
+      selectedGrade: '8급', // 기본값을 8급으로 설정 (하위 호환성)
+      selectedGrades: ['8급'], // 기본값을 8급으로 설정 (새로운 다중 급수)
       studyMode: 'sequential',
       isDarkMode: false,
       isLeftHanded: false,
+      favoriteCharacters: new Set<string>(),
+      favoriteWords: new Set<string>(),
       isDbInitialized: false,
       reverseAnimationTrigger: null,
 
@@ -165,7 +177,7 @@ export const useAppStore = create<AppState>()(
             set({ selectedGrades: [selectedGrade] });
           } else if (selectedGrades.length === 0) {
             // 둘 다 비어있으면 기본값 8급으로 설정
-            set({ selectedGrades: [8], selectedGrade: 8 });
+            set({ selectedGrades: ['8급'], selectedGrade: '8급' });
           }
 
           // 다중 급수에서 랜덤 단어들을 가져와서 카드 스택 생성
@@ -782,6 +794,47 @@ export const useAppStore = create<AppState>()(
         set({ isLeftHanded: isLeft });
       },
 
+      // 즐겨찾기 액션들
+      toggleFavoriteCharacter: (characterId: string) => {
+        const { favoriteCharacters } = get();
+        const newFavorites = new Set(favoriteCharacters);
+
+        if (newFavorites.has(characterId)) {
+          newFavorites.delete(characterId);
+          console.log(`💔 한자 즐겨찾기 해제: ${characterId}`);
+        } else {
+          newFavorites.add(characterId);
+          console.log(`💖 한자 즐겨찾기 추가: ${characterId}`);
+        }
+
+        set({ favoriteCharacters: newFavorites });
+      },
+
+      toggleFavoriteWord: (wordId: string) => {
+        const { favoriteWords } = get();
+        const newFavorites = new Set(favoriteWords);
+
+        if (newFavorites.has(wordId)) {
+          newFavorites.delete(wordId);
+          console.log(`💔 단어 즐겨찾기 해제: ${wordId}`);
+        } else {
+          newFavorites.add(wordId);
+          console.log(`💖 단어 즐겨찾기 추가: ${wordId}`);
+        }
+
+        set({ favoriteWords: newFavorites });
+      },
+
+      isFavoriteCharacter: (characterId: string) => {
+        const { favoriteCharacters } = get();
+        return favoriteCharacters.has(characterId);
+      },
+
+      isFavoriteWord: (wordId: string) => {
+        const { favoriteWords } = get();
+        return favoriteWords.has(wordId);
+      },
+
       // 다중 급수 설정
       setSelectedGrades: (grades: HanjaGrade[]) => {
         console.log(`📚 선택된 급수: ${grades.join(', ')}급`);
@@ -808,7 +861,22 @@ export const useAppStore = create<AppState>()(
         isDbInitialized: state.isDbInitialized,
         studiedCardIds: state.studiedCardIds,
         savedCardIds: state.savedCardIds,
+        favoriteCharacters: Array.from(state.favoriteCharacters),
+        favoriteWords: Array.from(state.favoriteWords),
       }),
+      onRehydrateStorage: () => state => {
+        if (state) {
+          // 배열로 저장된 즐겨찾기를 Set으로 복원
+          if (Array.isArray((state as any).favoriteCharacters)) {
+            state.favoriteCharacters = new Set(
+              (state as any).favoriteCharacters
+            );
+          }
+          if (Array.isArray((state as any).favoriteWords)) {
+            state.favoriteWords = new Set((state as any).favoriteWords);
+          }
+        }
+      },
     }
   )
 );
