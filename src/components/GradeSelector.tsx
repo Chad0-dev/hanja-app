@@ -18,7 +18,7 @@ interface GradeSelectorProps {
   onConfirm: () => void;
 }
 
-const ALL_GRADES: HanjaGrade[] = [8, 7, 6, 5, 4, 3];
+const ALL_GRADES: HanjaGrade[] = ['8급', '7급', '6급', '5급', '4급', '3급'];
 
 export const GradeSelector: React.FC<GradeSelectorProps> = ({
   visible,
@@ -33,7 +33,12 @@ export const GradeSelector: React.FC<GradeSelectorProps> = ({
   const handleGradeToggle = (grade: HanjaGrade) => {
     const newGrades = tempSelectedGrades.includes(grade)
       ? tempSelectedGrades.filter(g => g !== grade)
-      : [...tempSelectedGrades, grade].sort((a, b) => b - a); // 내림차순 정렬
+      : [...tempSelectedGrades, grade].sort((a, b) => {
+          // '8급' -> 8로 변환해서 내림차순 정렬
+          const numA = parseInt(a.replace('급', ''));
+          const numB = parseInt(b.replace('급', ''));
+          return numB - numA;
+        });
 
     setTempSelectedGrades(newGrades);
   };
@@ -94,7 +99,7 @@ export const GradeSelector: React.FC<GradeSelectorProps> = ({
                         isSelected && styles.gradeTextSelected,
                       ]}
                     >
-                      {grade}급
+                      {grade}
                     </Text>
                     {isSelected && <Text style={styles.checkmark}>✓</Text>}
                   </TouchableOpacity>
@@ -108,7 +113,11 @@ export const GradeSelector: React.FC<GradeSelectorProps> = ({
             <Text style={styles.statusText}>
               선택된 급수:{' '}
               {tempSelectedGrades.length > 0
-                ? tempSelectedGrades.sort((a, b) => b - a).join(', ') + '급'
+                ? tempSelectedGrades.sort((a, b) => {
+                    const numA = parseInt(a.replace('급', ''));
+                    const numB = parseInt(b.replace('급', ''));
+                    return numB - numA;
+                  }).join(', ')
                 : '없음'}
             </Text>
           </View>

@@ -20,7 +20,9 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { useGradeSelection } from '../hooks/useGradeSelection';
 import { HanjaWordCard } from '../types';
+import { GradeSelector } from './GradeSelector';
 
 const { width: screenWidth } = Dimensions.get('window');
 const SWIPE_THRESHOLD = screenWidth * 0.3; // 화면 너비의 30%
@@ -58,6 +60,14 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
     cardStyle,
     hideText = false,
   }) => {
+    const {
+      isGradeSelectorVisible,
+      selectedGrades,
+      showGradeSelection,
+      closeGradeSelection,
+      handleGradeChange,
+      handleGradeConfirm,
+    } = useGradeSelection();
     const [isFlipped, setIsFlipped] = useState(false);
 
     // 제스처와 애니메이션을 위한 shared values - 메모리 최적화
@@ -302,20 +312,25 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
     }
 
     return (
+    <>
       <PanGestureHandler onGestureEvent={gestureHandler}>
         <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
           {/* 단순한 조건부 렌더링 - 크래시 방지 */}
           {!isFlipped ? (
             /* 앞면 카드 - 한자 단어만 표시 */
             <View style={[styles.card, styles.frontCard]}>
-              {/* 급수 배지 - 오른쪽 상단 */}
-              <View style={styles.gradeBadge}>
+              {/* 급수 배지 - 오른쪽 상단 (클릭 가능) */}
+              <TouchableOpacity
+                style={styles.gradeBadge}
+                onPress={showGradeSelection}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.gradeText}>
                   {typeof card.grade === 'string' && card.grade.includes('급')
                     ? card.grade
                     : `${card.grade}급`}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.fullCardContainer}
@@ -360,6 +375,19 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
           ) : (
             /* 뒷면 카드 - 발음, 뜻, 구성 한자 정보 */
             <View style={[styles.card, styles.backCard]}>
+              {/* 급수 배지 - 오른쪽 상단 (클릭 가능) */}
+              <TouchableOpacity
+                style={styles.gradeBadge}
+                onPress={showGradeSelection}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.gradeText}>
+                  {typeof card.grade === 'string' && card.grade.includes('급')
+                    ? card.grade
+                    : `${card.grade}급`}
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.fullCardContainer}
                 onPress={flipCard}
@@ -451,6 +479,16 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
           )}
         </Animated.View>
       </PanGestureHandler>
+
+      {/* 급수 선택 모달 */}
+      <GradeSelector
+        visible={isGradeSelectorVisible}
+        onClose={closeGradeSelection}
+        selectedGrades={selectedGrades}
+        onGradeChange={handleGradeChange}
+        onConfirm={handleGradeConfirm}
+      />
+    </>
     );
     // React.memo의 비교 함수 (성능 최적화)
   },
