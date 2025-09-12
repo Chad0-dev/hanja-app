@@ -158,7 +158,7 @@ export default function HelpScreen() {
             </PanGestureHandler>
           </View>
         </View>
-        
+
         {/* 하단 배너 광고 목업 */}
         <AdBannerMockup />
       </ImageBackground>
