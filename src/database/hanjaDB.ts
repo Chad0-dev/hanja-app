@@ -450,9 +450,11 @@ const reorderCharactersByWord = (
   // 디버깅: 특정 단어만 로그
   const originalOrder = characters.map(c => c.character);
 
-  // 디버깅 제거
-  if (false) {
-    console.log(`🔍 특별 분석: ${word}`);
+  // 디버깅: 생활 단어만 로그
+  if (word === '生活') {
+    console.log(`🔍 생활 단어 분석:`);
+    console.log(`   원본 한자 순서: [${originalOrder.join(', ')}]`);
+    console.log(`   단어 한자 순서: [${wordChars.join(', ')}]`);
   }
 
   const isOrderDifferent =
