@@ -143,7 +143,7 @@ export class RelatedWordService {
           : '';
 
       const query = `
-        SELECT DISTINCT w.*, GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || c.radicalStrokes, '@@') as charactersData
+        SELECT DISTINCT w.*, GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || c.radicalStrokes, '@@' ORDER BY wc.position) as charactersData
         FROM words w
         JOIN word_characters wc ON w.id = wc.wordId
         JOIN characters c ON wc.characterId = c.id
@@ -219,7 +219,7 @@ export class RelatedWordService {
           : '';
 
       const query = `
-        SELECT DISTINCT w.*, GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || c.radicalStrokes, '@@') as charactersData
+        SELECT DISTINCT w.*, GROUP_CONCAT(c.character || '|' || c.pronunciation || '|' || c.meaning || '|' || c.strokeCount || '|' || c.radical || '|' || c.radicalName || '|' || c.radicalStrokes, '@@' ORDER BY wc.position) as charactersData
         FROM words w
         JOIN word_characters wc ON w.id = wc.wordId
         JOIN characters c ON wc.characterId = c.id
