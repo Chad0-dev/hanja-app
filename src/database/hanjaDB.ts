@@ -418,7 +418,7 @@ export const getGradeStatistics = async (): Promise<
     };
 
     result.forEach((row: any) => {
-      const grade = row.grade as HanjaGrade;
+      const grade = `${row.grade}급` as HanjaGrade;
       stats[grade] = {
         total: row.total,
         memorized: row.memorized,

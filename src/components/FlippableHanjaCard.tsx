@@ -310,7 +310,11 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
             <View style={[styles.card, styles.frontCard]}>
               {/* 급수 배지 - 오른쪽 상단 */}
               <View style={styles.gradeBadge}>
-                <Text style={styles.gradeText}>{card.grade}</Text>
+                <Text style={styles.gradeText}>
+                  {typeof card.grade === 'string' && card.grade.includes('급') 
+                    ? card.grade 
+                    : `${card.grade}급`}
+                </Text>
               </View>
 
               <TouchableOpacity

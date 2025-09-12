@@ -274,7 +274,7 @@ export class RelatedWordService {
       word: row.word,
       pronunciation: row.pronunciation,
       meaning: row.meaning,
-      grade: row.grade as HanjaGrade,
+      grade: `${row.grade}급` as HanjaGrade,
       isMemorized: Boolean(row.isMemorized),
       characters: this.parseCharactersData(row.charactersData || ''),
       relatedWords: {
