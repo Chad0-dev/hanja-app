@@ -1,9 +1,13 @@
 import { AdBannerMockup } from '@/src/components';
 import { AppColors } from '@/src/constants/AppColors';
 import { wordData } from '@/src/data/wordData';
-import { useAppStore } from '@/src/stores/useAppStore';
+import {
+  getBookmarkedWordIds,
+  toggleWordBookmark,
+} from '@/src/database/hanjaDB';
 import { HanjaCharacter, HanjaGrade, HanjaWordCard } from '@/src/types';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -28,18 +32,48 @@ export default function WordbookScreen() {
   const [characters, setCharacters] = useState<HanjaCharacter[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Zustand 스토어에서 즐겨찾기 상태와 액션들 가져오기
-  const {
-    favoriteCharacters,
-    favoriteWords,
-    toggleFavoriteCharacter,
-    toggleFavoriteWord,
-    isFavoriteCharacter,
-    isFavoriteWord,
-  } = useAppStore();
+  const [bookmarkedWords, setBookmarkedWords] = useState<Set<string>>(
+    new Set()
+  );
 
   const grades: HanjaGrade[] = ['8급', '7급', '6급', '5급', '4급', '3급'];
+
+  // 북마크 상태 로드 (최적화된 버전)
+  const loadBookmarkStates = async (wordList: HanjaWordCard[]) => {
+    try {
+      // 모든 북마크된 단어 ID를 한 번에 가져오기
+      const allBookmarkedIds = await getBookmarkedWordIds();
+
+      // 현재 단어 목록에서 북마크된 것들만 필터링
+      const currentPageBookmarkedIds = wordList
+        .filter(word => allBookmarkedIds.includes(word.id))
+        .map(word => word.id);
+
+      setBookmarkedWords(new Set(currentPageBookmarkedIds));
+    } catch (error) {
+      console.error('북마크 상태 로드 실패:', error);
+      setBookmarkedWords(new Set());
+    }
+  };
+
+  // 북마크 토글
+  const handleToggleBookmark = async (wordId: string) => {
+    try {
+      const newBookmarkState = await toggleWordBookmark(wordId);
+
+      setBookmarkedWords(prev => {
+        const newSet = new Set(prev);
+        if (newBookmarkState) {
+          newSet.add(wordId);
+        } else {
+          newSet.delete(wordId);
+        }
+        return newSet;
+      });
+    } catch (error) {
+      console.error('북마크 토글 실패:', error);
+    }
+  };
 
   // 급수별 데이터 로드
   const loadData = async (grade: HanjaGrade) => {
@@ -49,6 +83,9 @@ export default function WordbookScreen() {
       const wordsData = wordData.filter(word => word.grade === grade);
 
       setWords(wordsData);
+
+      // 북마크 상태 로드
+      await loadBookmarkStates(wordsData);
 
       // 단어들에서 한자 추출 (중복 제거)
       const charactersMap = new Map<string, HanjaCharacter>();
@@ -77,31 +114,50 @@ export default function WordbookScreen() {
     loadData(selectedGrade);
   }, [selectedGrade]);
 
-  // 즐겨찾기 토글 (탭에 따라 다른 함수 호출)
-  const toggleFavorite = (id: string) => {
-    if (activeTab === 'characters') {
-      toggleFavoriteCharacter(id);
-    } else {
-      toggleFavoriteWord(id);
+  // 페이지가 포커스될 때마다 북마크 상태 새로고침
+  useFocusEffect(
+    useCallback(() => {
+      if (words.length > 0) {
+        loadBookmarkStates(words);
+      }
+    }, [words])
+  );
+
+  // 한자가 북마크된 단어에 포함되는지 확인
+  const isCharacterBookmarked = (characterId: string): boolean => {
+    return words.some(
+      word =>
+        bookmarkedWords.has(word.id) &&
+        word.characters.some(char => char.id === characterId)
+    );
+  };
+
+  // 북마크 토글 (현재는 단어만 지원, characters는 words에 따라 활성화)
+  const toggleFavorite = async (id: string) => {
+    if (activeTab === 'words') {
+      await handleToggleBookmark(id);
     }
+    // characters는 클릭해도 아무 동작하지 않음 (단어에 의해 자동 활성화)
   };
 
   const renderCharacterCard = ({ item }: { item: HanjaCharacter }) => {
-    const isFavorite = isFavoriteCharacter(item.id);
+    const isBookmarked = isCharacterBookmarked(item.id);
 
     return (
       <TouchableOpacity
         style={[
           styles.card,
-          isFavorite ? styles.favoriteCard : styles.normalCard,
+          isBookmarked ? styles.favoriteCard : styles.normalCard,
         ]}
         onPress={() => toggleFavorite(item.id)}
       >
-        <Text style={[styles.cardCharacter, isFavorite && styles.favoriteText]}>
+        <Text
+          style={[styles.cardCharacter, isBookmarked && styles.favoriteText]}
+        >
           {item.character}
         </Text>
         <Text
-          style={[styles.cardMeaning, isFavorite && styles.favoriteSubText]}
+          style={[styles.cardMeaning, isBookmarked && styles.favoriteSubText]}
           numberOfLines={1}
         >
           {item.meaning} {item.pronunciation}
@@ -111,13 +167,13 @@ export default function WordbookScreen() {
   };
 
   const renderWordCard = ({ item }: { item: HanjaWordCard }) => {
-    const isFavorite = isFavoriteWord(item.id);
+    const isBookmarked = bookmarkedWords.has(item.id);
 
     return (
       <TouchableOpacity
         style={[
           styles.card,
-          isFavorite ? styles.favoriteCard : styles.normalCard,
+          isBookmarked ? styles.favoriteCard : styles.normalCard,
         ]}
         onPress={() => toggleFavorite(item.id)}
       >
@@ -125,7 +181,7 @@ export default function WordbookScreen() {
           style={[
             styles.cardWord,
             item.word.length >= 3 && styles.cardWordLong,
-            isFavorite && styles.favoriteText,
+            isBookmarked && styles.favoriteText,
           ]}
         >
           {item.word}
@@ -133,7 +189,7 @@ export default function WordbookScreen() {
         <Text
           style={[
             styles.cardPronunciation,
-            isFavorite && styles.favoriteSubText,
+            isBookmarked && styles.favoriteSubText,
           ]}
         >
           {item.pronunciation}

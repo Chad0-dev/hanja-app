@@ -30,6 +30,9 @@ export const initializeDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
     await createTables();
   }
 
+  // 데이터베이스 스키마 마이그레이션 실행
+  await runMigrations();
+
   console.log('✅ 한자 데이터베이스 초기화 완료');
   return db;
 };
@@ -52,6 +55,7 @@ const createTablesSync = (): void => {
         meaning TEXT NOT NULL,
         grade INTEGER NOT NULL,
         isMemorized BOOLEAN DEFAULT 0,
+        is_bookmarked INTEGER DEFAULT 0,
         leftSwipeWords TEXT,
         rightSwipeWords TEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -125,6 +129,7 @@ const createTables = async (): Promise<void> => {
         meaning TEXT NOT NULL,
         grade INTEGER NOT NULL,
         isMemorized BOOLEAN DEFAULT 0,
+        is_bookmarked INTEGER DEFAULT 0,
         leftSwipeWords TEXT,
         rightSwipeWords TEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -534,6 +539,176 @@ const parseCharactersData = (charactersData: string): HanjaCharacter[] => {
     return characters;
   } catch (error) {
     return [];
+  }
+};
+
+/**
+ * 단어 북마크 상태 확인
+ */
+export const isWordBookmarked = async (wordId: string): Promise<boolean> => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  try {
+    const result = (await db.getFirstAsync(
+      'SELECT is_bookmarked FROM words WHERE id = ?',
+      [wordId]
+    )) as { is_bookmarked: number } | null;
+
+    return result ? result.is_bookmarked === 1 : false;
+  } catch (error) {
+    console.error('북마크 상태 확인 실패:', error);
+    return false;
+  }
+};
+
+/**
+ * 단어 북마크 토글
+ */
+export const toggleWordBookmark = async (wordId: string): Promise<boolean> => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  try {
+    // 현재 북마크 상태 확인
+    const isBookmarked = await isWordBookmarked(wordId);
+    const newBookmarkState = isBookmarked ? 0 : 1;
+
+    // 북마크 상태 업데이트
+    await db.runAsync('UPDATE words SET is_bookmarked = ? WHERE id = ?', [
+      newBookmarkState,
+      wordId,
+    ]);
+
+    console.log(
+      `📚 단어 ${wordId} 북마크 ${newBookmarkState ? '추가' : '제거'}`
+    );
+    return newBookmarkState === 1;
+  } catch (error) {
+    console.error('북마크 토글 실패:', error);
+    throw error;
+  }
+};
+
+/**
+ * 북마크된 단어 ID 목록 조회 (간단 버전)
+ */
+export const getBookmarkedWordIds = async (): Promise<string[]> => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  try {
+    const rows = (await db.getAllAsync(
+      'SELECT id FROM words WHERE is_bookmarked = 1'
+    )) as { id: string }[];
+
+    return rows.map(row => row.id);
+  } catch (error) {
+    console.error('북마크된 단어 ID 조회 실패:', error);
+    return [];
+  }
+};
+
+/**
+ * 북마크된 단어 목록 조회
+ */
+export const getBookmarkedWords = async (
+  grade?: HanjaGrade
+): Promise<HanjaWordCard[]> => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  try {
+    let query = `
+      SELECT DISTINCT w.*, 
+        GROUP_CONCAT(c.character, '') as characters_str,
+        GROUP_CONCAT(c.id || '|' || c.character || '|' || c.pronunciation || '|' || 
+                    c.meaning || '|' || c.strokeCount || '|' || c.radical || '|' || 
+                    c.radicalName || '|' || c.radicalStrokes, '||') as characters_data
+      FROM words w
+      LEFT JOIN word_characters wc ON w.id = wc.word_id
+      LEFT JOIN characters c ON wc.character_id = c.id
+      WHERE w.is_bookmarked = 1
+    `;
+
+    const params: any[] = [];
+
+    if (grade) {
+      const gradeNumber = parseInt(grade.replace('급', ''));
+      query += ' AND w.grade = ?';
+      params.push(gradeNumber);
+    }
+
+    query += ' GROUP BY w.id ORDER BY w.word';
+
+    const rows = (await db.getAllAsync(query, params)) as any[];
+
+    return rows.map(row => ({
+      id: row.id,
+      word: row.word,
+      pronunciation: row.pronunciation,
+      meaning: row.meaning,
+      grade: `${row.grade}급` as HanjaGrade,
+      characters: row.characters_data
+        ? row.characters_data.split('||').map((charData: string) => {
+            const [
+              id,
+              character,
+              pronunciation,
+              meaning,
+              strokeCount,
+              radical,
+              radicalName,
+              radicalStrokes,
+            ] = charData.split('|');
+            return {
+              id,
+              character,
+              pronunciation,
+              meaning,
+              strokeCount: parseInt(strokeCount),
+              radical,
+              radicalName,
+              radicalStrokes: parseInt(radicalStrokes),
+            } as HanjaCharacter;
+          })
+        : [],
+    }));
+  } catch (error) {
+    console.error('북마크된 단어 조회 실패:', error);
+    return [];
+  }
+};
+
+/**
+ * 데이터베이스 스키마 마이그레이션
+ */
+const runMigrations = async (): Promise<void> => {
+  if (!db) return;
+
+  try {
+    // 현재 스키마 버전 확인
+    const result = (await db.getAllAsync(`PRAGMA table_info(words);`)) as any[];
+    const hasBookmarkColumn = result.some(
+      (column: any) => column.name === 'is_bookmarked'
+    );
+
+    if (!hasBookmarkColumn) {
+      console.log('📋 북마크 컬럼 추가 마이그레이션 실행...');
+
+      // is_bookmarked 컬럼 추가
+      await db.execAsync(`
+        ALTER TABLE words ADD COLUMN is_bookmarked INTEGER DEFAULT 0;
+      `);
+
+      console.log('✅ 북마크 컬럼 추가 완료');
+    }
+  } catch (error) {
+    console.error('❌ 마이그레이션 실패:', error);
   }
 };
 

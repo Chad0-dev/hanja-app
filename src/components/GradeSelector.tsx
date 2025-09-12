@@ -27,18 +27,21 @@ export const GradeSelector: React.FC<GradeSelectorProps> = ({
   onGradeChange,
   onConfirm,
 }) => {
-  const [tempSelectedGrades, setTempSelectedGrades] =
-    useState<HanjaGrade[]>(selectedGrades);
+  const [tempSelectedGrades, setTempSelectedGrades] = useState<HanjaGrade[]>(
+    selectedGrades || []
+  );
 
   const handleGradeToggle = (grade: HanjaGrade) => {
     const newGrades = tempSelectedGrades.includes(grade)
       ? tempSelectedGrades.filter(g => g !== grade)
-      : [...tempSelectedGrades, grade].sort((a, b) => {
-          // '8급' -> 8로 변환해서 내림차순 정렬
-          const numA = parseInt(a.replace('급', ''));
-          const numB = parseInt(b.replace('급', ''));
-          return numB - numA;
-        });
+      : [...tempSelectedGrades, grade]
+          .filter(g => g && typeof g === 'string')
+          .sort((a, b) => {
+            // '8급' -> 8로 변환해서 내림차순 정렬
+            const numA = parseInt(a.replace('급', ''));
+            const numB = parseInt(b.replace('급', ''));
+            return numB - numA;
+          });
 
     setTempSelectedGrades(newGrades);
   };
@@ -54,7 +57,7 @@ export const GradeSelector: React.FC<GradeSelectorProps> = ({
   };
 
   const handleCancel = () => {
-    setTempSelectedGrades(selectedGrades); // 원래 상태로 복원
+    setTempSelectedGrades(selectedGrades || []); // 원래 상태로 복원
     onClose();
   };
 
@@ -113,11 +116,14 @@ export const GradeSelector: React.FC<GradeSelectorProps> = ({
             <Text style={styles.statusText}>
               선택된 급수:{' '}
               {tempSelectedGrades.length > 0
-                ? tempSelectedGrades.sort((a, b) => {
-                    const numA = parseInt(a.replace('급', ''));
-                    const numB = parseInt(b.replace('급', ''));
-                    return numB - numA;
-                  }).join(', ')
+                ? tempSelectedGrades
+                    .filter(grade => grade && typeof grade === 'string')
+                    .sort((a, b) => {
+                      const numA = parseInt(a.replace('급', ''));
+                      const numB = parseInt(b.replace('급', ''));
+                      return numB - numA;
+                    })
+                    .join(', ')
                 : '없음'}
             </Text>
           </View>

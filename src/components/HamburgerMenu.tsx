@@ -10,9 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useGradeSelection } from '../hooks/useGradeSelection';
-import { useAppStore } from '../stores/useAppStore';
-import { GradeSelector } from './GradeSelector';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -22,7 +19,6 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { id: 'grade-selection', title: '급수 선택' },
   { id: 'hanja-quiz', title: '한자 문제' },
   { id: 'four-character-idiom', title: '사자성어' },
   { id: 'settings', title: '설정' },
@@ -32,15 +28,6 @@ const menuItems: MenuItem[] = [
 export const HamburgerMenu: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const router = useRouter();
-  const {
-    isGradeSelectorVisible,
-    selectedGrades,
-    showGradeSelection,
-    closeGradeSelection,
-    handleGradeChange,
-    handleGradeConfirm,
-  } = useGradeSelection();
-  const { initializeCardStack } = useAppStore();
 
   const openMenu = () => {
     setIsVisible(true);
@@ -51,10 +38,7 @@ export const HamburgerMenu: React.FC = () => {
   };
 
   const handleMenuItemPress = (item: MenuItem) => {
-    if (item.id === 'grade-selection') {
-      // 급수 선택 팝업 표시
-      showGradeSelection();
-    } else if (item.id === 'settings') {
+    if (item.id === 'settings') {
       // 설정 페이지로 이동
       router.push('/(tabs)/settings');
     } else if (item.id === 'help') {
@@ -73,7 +57,6 @@ export const HamburgerMenu: React.FC = () => {
 
     closeMenu();
   };
-
 
   return (
     <>
@@ -125,15 +108,6 @@ export const HamburgerMenu: React.FC = () => {
           ))}
         </View>
       </Modal>
-
-      {/* 다중 급수 선택 모달 */}
-      <GradeSelector
-        visible={isGradeSelectorVisible}
-        onClose={closeGradeSelection}
-        selectedGrades={selectedGrades}
-        onGradeChange={handleGradeChange}
-        onConfirm={handleGradeConfirm}
-      />
     </>
   );
 };

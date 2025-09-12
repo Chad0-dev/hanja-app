@@ -20,9 +20,11 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { isWordBookmarked, toggleWordBookmark } from '../database/hanjaDB';
 import { useGradeSelection } from '../hooks/useGradeSelection';
 import { HanjaWordCard } from '../types';
 import { GradeSelector } from './GradeSelector';
+import { IconSymbol } from './ui/IconSymbol';
 
 const { width: screenWidth } = Dimensions.get('window');
 const SWIPE_THRESHOLD = screenWidth * 0.3; // 화면 너비의 30%
@@ -69,6 +71,40 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
       handleGradeConfirm,
     } = useGradeSelection();
     const [isFlipped, setIsFlipped] = useState(false);
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
+
+    // 컴포넌트 마운트 시 북마크 상태 로드
+    React.useEffect(() => {
+      const loadBookmarkStatus = async () => {
+        try {
+          const bookmarked = await isWordBookmarked(card.id);
+          setIsBookmarked(bookmarked);
+        } catch (error) {
+          console.error('북마크 상태 로드 실패:', error);
+        }
+      };
+
+      loadBookmarkStatus();
+    }, [card.id]);
+
+    // 북마크 토글 함수 (실제 DB 연동)
+    const toggleBookmark = async (event: any) => {
+      // 이벤트 전파 중지 (카드 뒤집기 방지)
+      event.stopPropagation();
+
+      if (isBookmarkLoading) return;
+
+      setIsBookmarkLoading(true);
+      try {
+        const newBookmarkState = await toggleWordBookmark(card.id);
+        setIsBookmarked(newBookmarkState);
+      } catch (error) {
+        console.error('북마크 토글 실패:', error);
+      } finally {
+        setIsBookmarkLoading(false);
+      }
+    };
 
     // 제스처와 애니메이션을 위한 shared values - 메모리 최적화
     const translateX = useSharedValue(0);
@@ -312,183 +348,221 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
     }
 
     return (
-    <>
-      <PanGestureHandler onGestureEvent={gestureHandler}>
-        <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
-          {/* 단순한 조건부 렌더링 - 크래시 방지 */}
-          {!isFlipped ? (
-            /* 앞면 카드 - 한자 단어만 표시 */
-            <View style={[styles.card, styles.frontCard]}>
-              {/* 급수 배지 - 오른쪽 상단 (클릭 가능) */}
-              <TouchableOpacity
-                style={styles.gradeBadge}
-                onPress={showGradeSelection}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.gradeText}>
-                  {typeof card.grade === 'string' && card.grade.includes('급')
-                    ? card.grade
-                    : `${card.grade}급`}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.fullCardContainer}
-                onPress={flipCard}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.hanjaText}>{card.word}</Text>
-                <Text style={styles.tapHint}>탭하여 뒤집기</Text>
-              </TouchableOpacity>
-
-              {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
-              <Animated.View
-                style={[
-                  styles.swipeIndicator,
-                  styles.leftSwipeIndicator,
-                  leftHighlightStyle,
-                ]}
-              >
-                <Animated.Text
-                  style={[styles.swipeIndicatorText, leftTextStyle]}
+      <>
+        <PanGestureHandler onGestureEvent={gestureHandler}>
+          <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
+            {/* 단순한 조건부 렌더링 - 크래시 방지 */}
+            {!isFlipped ? (
+              /* 앞면 카드 - 한자 단어만 표시 */
+              <View style={[styles.card, styles.frontCard]}>
+                {/* 급수 배지 - 오른쪽 상단 (클릭 가능) */}
+                <TouchableOpacity
+                  style={styles.gradeBadge}
+                  onPress={showGradeSelection}
+                  activeOpacity={0.7}
                 >
-                  {card.characters[0]?.character} 연관단어
-                </Animated.Text>
-              </Animated.View>
+                  <Text style={styles.gradeText}>
+                    {typeof card.grade === 'string' && card.grade.includes('급')
+                      ? card.grade
+                      : `${card.grade}급`}
+                  </Text>
+                </TouchableOpacity>
 
-              <Animated.View
-                style={[
-                  styles.swipeIndicator,
-                  styles.rightSwipeIndicator,
-                  rightHighlightStyle,
-                ]}
-              >
-                <Animated.Text
-                  style={[styles.swipeIndicatorText, rightTextStyle]}
+                {/* 북마크 아이콘 - 급수 배지 아래 */}
+                <TouchableOpacity
+                  style={styles.bookmarkIconInCard}
+                  onPress={toggleBookmark}
+                  activeOpacity={0.7}
                 >
-                  {card.characters[1]?.character ||
-                    card.characters[0]?.character}{' '}
-                  연관단어
-                </Animated.Text>
-              </Animated.View>
-            </View>
-          ) : (
-            /* 뒷면 카드 - 발음, 뜻, 구성 한자 정보 */
-            <View style={[styles.card, styles.backCard]}>
-              {/* 급수 배지 - 오른쪽 상단 (클릭 가능) */}
-              <TouchableOpacity
-                style={styles.gradeBadge}
-                onPress={showGradeSelection}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.gradeText}>
-                  {typeof card.grade === 'string' && card.grade.includes('급')
-                    ? card.grade
-                    : `${card.grade}급`}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.fullCardContainer}
-                onPress={flipCard}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.pronunciationText}>
-                  {card.pronunciation}
-                </Text>
-                <Text style={styles.meaningText}>{card.meaning}</Text>
-
-                {/* 구성 한자들 정보 */}
-                <View style={styles.charactersContainer}>
-                  <Text style={styles.charactersTitle}>구성 한자:</Text>
-                  {(() => {
-                    // 한자 순서를 단어 순서에 맞게 정렬
-                    const wordChars = card.word.split('');
-                    const orderedChars = [];
-
-                    // 단어의 각 한자 순서대로 매칭
-                    for (let i = 0; i < wordChars.length; i++) {
-                      const wordChar = wordChars[i];
-                      const matchingChar = card.characters.find(
-                        c => c.character === wordChar
-                      );
-                      if (matchingChar) {
-                        orderedChars.push(matchingChar);
-                      }
+                  <IconSymbol
+                    size={22}
+                    name="book.fill"
+                    color={
+                      isBookmarkLoading
+                        ? 'rgba(44, 24, 16, 0.6)'
+                        : isBookmarked
+                          ? '#2c1810' // 활성화 시 진한 먹색
+                          : 'rgba(44, 24, 16, 0.4)' // 비활성화 시 연한 먹색
                     }
+                  />
+                </TouchableOpacity>
 
-                    // 매칭되지 않은 한자들도 추가 (안전장치)
-                    card.characters.forEach(char => {
-                      if (
-                        !orderedChars.find(
-                          oc => oc.character === char.character
-                        )
-                      ) {
-                        orderedChars.push(char);
+                <TouchableOpacity
+                  style={styles.fullCardContainer}
+                  onPress={flipCard}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.hanjaText}>{card.word}</Text>
+                  <Text style={styles.tapHint}>탭하여 뒤집기</Text>
+                </TouchableOpacity>
+
+                {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
+                <Animated.View
+                  style={[
+                    styles.swipeIndicator,
+                    styles.leftSwipeIndicator,
+                    leftHighlightStyle,
+                  ]}
+                >
+                  <Animated.Text
+                    style={[styles.swipeIndicatorText, leftTextStyle]}
+                  >
+                    {card.characters[0]?.character} 연관단어
+                  </Animated.Text>
+                </Animated.View>
+
+                <Animated.View
+                  style={[
+                    styles.swipeIndicator,
+                    styles.rightSwipeIndicator,
+                    rightHighlightStyle,
+                  ]}
+                >
+                  <Animated.Text
+                    style={[styles.swipeIndicatorText, rightTextStyle]}
+                  >
+                    {card.characters[1]?.character ||
+                      card.characters[0]?.character}{' '}
+                    연관단어
+                  </Animated.Text>
+                </Animated.View>
+              </View>
+            ) : (
+              /* 뒷면 카드 - 발음, 뜻, 구성 한자 정보 */
+              <View style={[styles.card, styles.backCard]}>
+                {/* 급수 배지 - 오른쪽 상단 (클릭 가능) */}
+                <TouchableOpacity
+                  style={styles.gradeBadge}
+                  onPress={showGradeSelection}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.gradeText}>
+                    {typeof card.grade === 'string' && card.grade.includes('급')
+                      ? card.grade
+                      : `${card.grade}급`}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* 북마크 아이콘 - 급수 배지 아래 */}
+                <TouchableOpacity
+                  style={styles.bookmarkIconInCard}
+                  onPress={toggleBookmark}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol
+                    size={22}
+                    name="book.fill"
+                    color={
+                      isBookmarkLoading
+                        ? 'rgba(44, 24, 16, 0.6)'
+                        : isBookmarked
+                          ? '#2c1810' // 활성화 시 진한 먹색
+                          : 'rgba(44, 24, 16, 0.4)' // 비활성화 시 연한 먹색
+                    }
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.fullCardContainer}
+                  onPress={flipCard}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.pronunciationText}>
+                    {card.pronunciation}
+                  </Text>
+                  <Text style={styles.meaningText}>{card.meaning}</Text>
+
+                  {/* 구성 한자들 정보 */}
+                  <View style={styles.charactersContainer}>
+                    <Text style={styles.charactersTitle}>구성 한자:</Text>
+                    {(() => {
+                      // 한자 순서를 단어 순서에 맞게 정렬
+                      const wordChars = card.word.split('');
+                      const orderedChars = [];
+
+                      // 단어의 각 한자 순서대로 매칭
+                      for (let i = 0; i < wordChars.length; i++) {
+                        const wordChar = wordChars[i];
+                        const matchingChar = card.characters.find(
+                          c => c.character === wordChar
+                        );
+                        if (matchingChar) {
+                          orderedChars.push(matchingChar);
+                        }
                       }
-                    });
 
-                    return orderedChars.map((char, index) => (
-                      <View key={char.id} style={styles.characterInfo}>
-                        <Text style={styles.characterText}>
-                          {char.character} {char.meaning} {char.pronunciation}
-                        </Text>
-                        <Text style={styles.characterDetails}>
-                          {char.strokeCount}획, {char.radicalName}(
-                          {char.radical})
-                        </Text>
-                      </View>
-                    ));
-                  })()}
-                </View>
+                      // 매칭되지 않은 한자들도 추가 (안전장치)
+                      card.characters.forEach(char => {
+                        if (
+                          !orderedChars.find(
+                            oc => oc.character === char.character
+                          )
+                        ) {
+                          orderedChars.push(char);
+                        }
+                      });
 
-                <Text style={styles.tapHint}>탭하여 뒤집기</Text>
-              </TouchableOpacity>
+                      return orderedChars.map((char, index) => (
+                        <View key={char.id} style={styles.characterInfo}>
+                          <Text style={styles.characterText}>
+                            {char.character} {char.meaning} {char.pronunciation}
+                          </Text>
+                          <Text style={styles.characterDetails}>
+                            {char.strokeCount}획, {char.radicalName}(
+                            {char.radical})
+                          </Text>
+                        </View>
+                      ));
+                    })()}
+                  </View>
 
-              {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
-              <Animated.View
-                style={[
-                  styles.swipeIndicator,
-                  styles.leftSwipeIndicator,
-                  leftHighlightStyle,
-                ]}
-              >
-                <Animated.Text
-                  style={[styles.swipeIndicatorText, leftTextStyle]}
+                  <Text style={styles.tapHint}>탭하여 뒤집기</Text>
+                </TouchableOpacity>
+
+                {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
+                <Animated.View
+                  style={[
+                    styles.swipeIndicator,
+                    styles.leftSwipeIndicator,
+                    leftHighlightStyle,
+                  ]}
                 >
-                  {card.characters[0]?.character} 연관단어
-                </Animated.Text>
-              </Animated.View>
+                  <Animated.Text
+                    style={[styles.swipeIndicatorText, leftTextStyle]}
+                  >
+                    {card.characters[0]?.character} 연관단어
+                  </Animated.Text>
+                </Animated.View>
 
-              <Animated.View
-                style={[
-                  styles.swipeIndicator,
-                  styles.rightSwipeIndicator,
-                  rightHighlightStyle,
-                ]}
-              >
-                <Animated.Text
-                  style={[styles.swipeIndicatorText, rightTextStyle]}
+                <Animated.View
+                  style={[
+                    styles.swipeIndicator,
+                    styles.rightSwipeIndicator,
+                    rightHighlightStyle,
+                  ]}
                 >
-                  {card.characters[1]?.character ||
-                    card.characters[0]?.character}{' '}
-                  연관단어
-                </Animated.Text>
-              </Animated.View>
-            </View>
-          )}
-        </Animated.View>
-      </PanGestureHandler>
+                  <Animated.Text
+                    style={[styles.swipeIndicatorText, rightTextStyle]}
+                  >
+                    {card.characters[1]?.character ||
+                      card.characters[0]?.character}{' '}
+                    연관단어
+                  </Animated.Text>
+                </Animated.View>
+              </View>
+            )}
+          </Animated.View>
+        </PanGestureHandler>
 
-      {/* 급수 선택 모달 */}
-      <GradeSelector
-        visible={isGradeSelectorVisible}
-        onClose={closeGradeSelection}
-        selectedGrades={selectedGrades}
-        onGradeChange={handleGradeChange}
-        onConfirm={handleGradeConfirm}
-      />
-    </>
+        {/* 급수 선택 모달 */}
+        <GradeSelector
+          visible={isGradeSelectorVisible}
+          onClose={closeGradeSelection}
+          selectedGrades={selectedGrades}
+          onGradeChange={handleGradeChange}
+          onConfirm={handleGradeConfirm}
+        />
+      </>
     );
     // React.memo의 비교 함수 (성능 최적화)
   },
@@ -556,6 +630,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  bookmarkIcon: {
+    position: 'absolute',
+    top: 50, // 급수 배지 아래
+    right: 15,
+    backgroundColor: 'rgba(248, 246, 242, 0.3)', // 연한 배경
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5, // 더 높은 elevation
+    zIndex: 20, // 다른 요소들보다 위에
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bookmarkIconInCard: {
+    position: 'absolute',
+    top: 55, // 급수 배지 아래 (급수 배지 높이 + 마진)
+    right: 15,
+    backgroundColor: 'rgba(248, 246, 242, 0.3)', // 연한 배경
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 9, // 급수 배지보다는 낮지만 카드 내용보다는 높게
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backCard: {
     backgroundColor: '#faf8f5', // 따뜻한 오프화이트

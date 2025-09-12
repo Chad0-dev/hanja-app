@@ -1,4 +1,4 @@
-import { getWordsByGrade } from '../database/hanjaDB';
+import { getBookmarkedWordIds, getWordsByGrade } from '../database/hanjaDB';
 import { HanjaGrade, HanjaWordCard } from '../types';
 
 /**
@@ -110,9 +110,13 @@ export class MultiGradeService {
   ): Promise<HanjaWordCard[]> {
     const allWords = await this.getWordsByMultipleGrades(grades);
 
-    // 제외할 단어들을 필터링
+    // 북마크된 단어 ID 가져오기
+    const bookmarkedIds = await getBookmarkedWordIds();
+
+    // 제외할 단어들을 필터링 (기존 excludeIds + 북마크된 단어들)
+    const allExcludeIds = [...excludeIds, ...bookmarkedIds];
     const availableWords = allWords.filter(
-      word => !excludeIds.includes(word.id)
+      word => !allExcludeIds.includes(word.id)
     );
 
     if (availableWords.length === 0) {
