@@ -1,4 +1,9 @@
-import { AdBannerMockup, CardDeck, DragonCharacter, HamburgerMenu } from '@/src/components';
+import {
+  AdBannerMockup,
+  CardDeck,
+  DragonCharacter,
+  HamburgerMenu,
+} from '@/src/components';
 import { useAppStore } from '@/src/stores/useAppStore';
 import React, { useEffect, useState } from 'react';
 import { ImageBackground, StyleSheet, Text, View } from 'react-native';
@@ -154,7 +159,7 @@ export default function HomeScreen() {
           )}
         </View>
       </View>
-      
+
       {/* 하단 배너 광고 목업 */}
       <AdBannerMockup />
     </ImageBackground>

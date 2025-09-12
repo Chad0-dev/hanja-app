@@ -280,7 +280,7 @@ export default function WordbookScreen() {
           />
         )}
       </View>
-      
+
       {/* 하단 배너 광고 목업 */}
       <AdBannerMockup />
     </ImageBackground>

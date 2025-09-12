@@ -72,7 +72,7 @@ export default function SettingsScreen() {
           <Text style={styles.tipText}>설정은 자동으로 저장됩니다</Text>
         </View>
       </View>
-      
+
       {/* 하단 배너 광고 목업 */}
       <AdBannerMockup />
     </ImageBackground>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -21,29 +21,26 @@ export const AdBannerMockup: React.FC = () => {
 const styles = StyleSheet.create({
   bannerContainer: {
     position: 'absolute',
-    bottom: 90, // 네비게이션 바(약 80px) 위쪽에 10px 여백
+    bottom: 80, // 네비게이션 바(약 80px) 바로 위에 마진 없이
     left: 0,
     right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 10,
     zIndex: 1000, // 다른 컴포넌트 위에 표시
   },
   banner: {
-    width: Math.min(320, screenWidth - 20), // 320px 또는 화면 너비에 맞춤
+    width: '100%', // 화면 100% 너비
     height: 50,
     backgroundColor: '#4285F4', // 구글 블루 색상
-    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#1a73e8',
+    borderTopWidth: 1, // 상단만 테두리
+    borderTopColor: '#1a73e8',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: -2, // 위쪽 그림자
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
     elevation: 5,
   },
   bannerText: {
