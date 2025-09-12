@@ -193,8 +193,6 @@ export const getWordsByGrade = async (
   }
 
   try {
-    console.log(`🔍 ${grade} 단어 조회 시작...`);
-
     // HanjaGrade 타입 ("3급", "8급" 등)을 숫자로 변환
     const gradeNumber =
       typeof grade === 'string' ? parseInt(grade.replace('급', ''), 10) : grade;
@@ -220,26 +218,18 @@ export const getWordsByGrade = async (
       [gradeNumber]
     );
 
-    console.log(`📊 ${grade}: ${result.length}개 단어 조회됨`);
-
     const words: HanjaWordCard[] = result.map((row: any) => {
       const characters = reorderCharactersByWord(
         parseCharactersData(row.characters_data),
         row.word
       );
 
-      // 디버깅: 한자가 없는 단어 로그
-      if (characters.length === 0) {
-        console.warn(`⚠️ 한자가 없는 단어 발견: ${row.word}(${row.id})`);
-        console.warn(`⚠️ characters_data: ${row.characters_data}`);
-      }
-
       return {
         id: row.id,
         word: row.word,
         pronunciation: row.pronunciation,
         meaning: row.meaning,
-        grade: row.grade as HanjaGrade,
+        grade: `${row.grade}급` as HanjaGrade,
         isMemorized: Boolean(row.isMemorized),
         characters,
         relatedWords: {
@@ -251,10 +241,8 @@ export const getWordsByGrade = async (
       };
     });
 
-    console.log(`✅ ${grade} 단어 파싱 완료: ${words.length}개`);
     return words;
   } catch (error) {
-    console.error('❌ 급수별 단어 조회 실패:', error);
     throw error;
   }
 };
@@ -296,7 +284,7 @@ export const getWordsByMemorized = async (
       word: row.word,
       pronunciation: row.pronunciation,
       meaning: row.meaning,
-      grade: row.grade as HanjaGrade,
+      grade: `${row.grade}급` as HanjaGrade,
       isMemorized: Boolean(row.isMemorized),
       characters: reorderCharactersByWord(
         parseCharactersData(row.characters_data),
@@ -310,7 +298,6 @@ export const getWordsByMemorized = async (
 
     return words;
   } catch (error) {
-    console.error('❌ 암기 상태별 단어 조회 실패:', error);
     throw error;
   }
 };
@@ -357,7 +344,7 @@ export const getWordsByCharacter = async (
       word: row.word,
       pronunciation: row.pronunciation,
       meaning: row.meaning,
-      grade: row.grade as HanjaGrade,
+      grade: `${row.grade}급` as HanjaGrade,
       isMemorized: Boolean(row.isMemorized),
       characters: reorderCharactersByWord(
         parseCharactersData(row.characters_data),
@@ -371,7 +358,6 @@ export const getWordsByCharacter = async (
 
     return words;
   } catch (error) {
-    console.error('❌ 한자별 단어 조회 실패:', error);
     throw error;
   }
 };
@@ -393,13 +379,7 @@ export const updateWordMemorized = async (
       [isMemorized ? 1 : 0, wordId]
     );
 
-    if (result.changes > 0) {
-      console.log(`✅ 단어 ${wordId} 암기 상태 업데이트: ${isMemorized}`);
-      return true;
-    } else {
-      console.warn(`⚠️ 단어 ${wordId} 업데이트 실패: 해당 단어를 찾을 수 없음`);
-      return false;
-    }
+    return result.changes > 0;
   } catch (error) {
     console.error('❌ 암기 상태 업데이트 실패:', error);
     throw error;
@@ -558,7 +538,6 @@ const parseCharactersData = (charactersData: string): HanjaCharacter[] => {
 
     return characters;
   } catch (error) {
-    console.error('❌ parseCharactersData 파싱 에러:', error);
     return [];
   }
 };

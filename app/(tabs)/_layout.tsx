@@ -23,14 +23,14 @@ export default function TabLayout() {
 
   // 왼손잡이 모드에 따라 탭 순서 결정
   const renderTabs = () => {
-    const exploreTab = (
+    const wordbookTab = (
       <Tabs.Screen
-        key="explore"
-        name="explore"
+        key="wordbook"
+        name="wordbook"
         options={{
           title: '',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={32} name="chart.bar.fill" color={color} />
+            <IconSymbol size={32} name="book.fill" color={color} />
           ),
         }}
       />
@@ -75,11 +75,11 @@ export default function TabLayout() {
       />
     );
 
-    // 왼손잡이 모드: 뒤로가기 - 홈 - 학습정보
-    // 오른손잡이 모드: 학습정보 - 홈 - 뒤로가기
+    // 왼손잡이 모드: 뒤로가기 - 홈 - 단어장
+    // 오른손잡이 모드: 단어장 - 홈 - 뒤로가기
     return isLeftHanded
-      ? [undoTab, homeTab, exploreTab]
-      : [exploreTab, homeTab, undoTab];
+      ? [undoTab, homeTab, wordbookTab]
+      : [wordbookTab, homeTab, undoTab];
   };
 
   return (
@@ -111,9 +111,27 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 숨겨진 단어장 탭 - 하단 네비게이션에는 표시되지 않음 */}
+      {/* 숨겨진 explore 탭 - 하단 네비게이션에는 표시되지 않음 */}
       <Tabs.Screen
-        name="wordbook"
+        name="explore"
+        options={{
+          href: null, // 하단 탭바에서 숨김
+          title: '',
+        }}
+      />
+
+      {/* 숨겨진 도움말 탭 - 하단 네비게이션에는 표시되지 않음 */}
+      <Tabs.Screen
+        name="help"
+        options={{
+          href: null, // 하단 탭바에서 숨김
+          title: '',
+        }}
+      />
+
+      {/* 숨겨진 한자 문제 탭 - 하단 네비게이션에는 표시되지 않음 */}
+      <Tabs.Screen
+        name="quiz"
         options={{
           href: null, // 하단 탭바에서 숨김
           title: '',

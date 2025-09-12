@@ -64,7 +64,6 @@ export class MultiGradeService {
 
       return uniqueWords;
     } catch (error) {
-      console.error('❌ 다중 급수 단어 조회 실패:', error);
       throw error;
     }
   }
@@ -87,7 +86,6 @@ export class MultiGradeService {
     );
 
     if (availableWords.length === 0) {
-      console.warn('⚠️ 선택 가능한 단어가 없습니다');
       return null;
     }
 

@@ -41,7 +41,7 @@ interface AppState {
   studyProgress: StudyProgress[];
 
   // 사용자 설정
-  selectedGrade: HanjaGrade | null; // 하위 호환성을 위해 유지
+  selectedGrade: HanjaGrade; // 하위 호환성을 위해 유지
   selectedGrades: HanjaGrade[]; // 새로운 다중 급수 선택
   studyMode: 'sequential' | 'random';
   isDarkMode: boolean;
@@ -103,7 +103,7 @@ interface AppState {
   getDbStatistics: () => Promise<
     Record<HanjaGrade, { total: number; memorized: number }>
   >;
-  setSelectedGrade: (grade: HanjaGrade | null) => void; // 하위 호환성을 위해 유지
+  setSelectedGrade: (grade: HanjaGrade | undefined) => void; // 하위 호환성을 위해 유지
   setSelectedGrades: (grades: HanjaGrade[]) => void; // 새로운 다중 급수 설정
   toggleWordMemorized: (wordId: string) => Promise<void>;
   forceReinitializeDatabase: () => Promise<void>;
@@ -147,14 +147,14 @@ export const useAppStore = create<AppState>()(
 
       // 캐시 초기화
       cachedWords: {
-        1: [],
-        2: [],
-        3: [],
-        4: [],
-        5: [],
-        6: [],
-        7: [],
-        8: [],
+        '1급': [],
+        '2급': [],
+        '3급': [],
+        '4급': [],
+        '5급': [],
+        '6급': [],
+        '7급': [],
+        '8급': [],
       },
 
       // 카드 스택 관리 (다중 급수 지원)
@@ -170,7 +170,7 @@ export const useAppStore = create<AppState>()(
               ? selectedGrades
               : selectedGrade
                 ? [selectedGrade]
-                : [8];
+                : ['8급'];
 
           // 하위 호환성: selectedGrades가 비어있으면 selectedGrade 기반으로 설정
           if (selectedGrades.length === 0 && selectedGrade) {
@@ -251,7 +251,7 @@ export const useAppStore = create<AppState>()(
       refillCardStack: async () => {
         const { selectedGrade } = get();
         const gradeToLoad = selectedGrade || 8;
-        console.log(`🔄 ${gradeToLoad}급 카드 스택 리필 중...`);
+        console.log(`🔄 ${gradeToLoad} 카드 스택 리필 중...`);
 
         try {
           const availableCards = await get().loadCards(gradeToLoad);
@@ -394,8 +394,6 @@ export const useAppStore = create<AppState>()(
             get().moveToNextCard();
           }
         } catch (error) {
-          console.error('❌ 연관단어 스와이프 처리 실패:', error);
-
           // 오류 발생 시 기존 방식으로 폴백
           get().moveToNextCard();
         }
@@ -572,7 +570,7 @@ export const useAppStore = create<AppState>()(
         // 실제 데이터베이스 상태 검증 (상태만으로는 신뢰할 수 없음)
         if (isDbInitialized) {
           try {
-            const testWords = await getWordsByGrade(8);
+            const testWords = await getWordsByGrade('8급');
             if (testWords.length > 0) {
               await get().initializeCardStack();
               return;
@@ -595,7 +593,7 @@ export const useAppStore = create<AppState>()(
           await migrateDataToSQLite();
 
           // 데이터베이스 검증
-          const testWords = await getWordsByGrade(8);
+          const testWords = await getWordsByGrade('8급');
 
           if (testWords.length === 0) {
             throw new Error('8급 단어가 데이터베이스에 없습니다');
@@ -617,9 +615,9 @@ export const useAppStore = create<AppState>()(
       },
 
       // 급수 설정
-      setSelectedGrade: (grade: HanjaGrade | null) => {
-        const validGrade = grade || 8; // null이면 8급으로 설정
-        console.log(`🎯 급수 변경: ${validGrade}급`);
+      setSelectedGrade: (grade: HanjaGrade | undefined) => {
+        const validGrade = grade || '8급'; // null이면 8급으로 설정
+        console.log(`🎯 급수 변경: ${validGrade}`);
 
         set({ selectedGrade: validGrade });
         // 급수 변경시 카드 스택 재초기화
@@ -638,7 +636,6 @@ export const useAppStore = create<AppState>()(
         try {
           // 현재 상태 확인 후 토글 (단순화된 구현)
           await dbUpdateWordMemorized(wordId, true); // 실제로는 현재 상태를 확인해야 함
-          console.log(`✅ 단어 ${wordId} 암기 상태 업데이트됨`);
 
           // 카드 스택 새로고침
           await get().refillCardStack();
@@ -667,7 +664,7 @@ export const useAppStore = create<AppState>()(
             gradeToLoad >= 1 &&
             gradeToLoad <= 8
           ) {
-            const targetGrade = gradeToLoad as HanjaGrade;
+            const targetGrade = `${gradeToLoad}급` as HanjaGrade;
             const { cachedWords } = get();
 
             // 캐시된 데이터가 있으면 반환 (성능 최적화)
@@ -681,7 +678,6 @@ export const useAppStore = create<AppState>()(
               return cachedWords[targetGrade];
             }
 
-            console.log(`📖 ${targetGrade}급 단어 로딩 중...`);
             const words = await getWordsByGrade(targetGrade);
 
             // 캐시에 저장
@@ -695,10 +691,9 @@ export const useAppStore = create<AppState>()(
             return words;
           } else {
             // 전체 급수 로딩 (grade가 유효하지 않은 경우)
-            console.log('📖 전체 급수 단어 로딩 중...');
             const allWords: HanjaWordCard[] = [];
             for (let g = 8; g >= 1; g--) {
-              const words = await get().loadCards(g as HanjaGrade);
+              const words = await get().loadCards(`${g}급` as HanjaGrade);
               allWords.push(...words);
             }
             return allWords;
@@ -743,8 +738,7 @@ export const useAppStore = create<AppState>()(
 
           // 데이터베이스 검증
           console.log('🔍 데이터베이스 재검증 중...');
-          const testWords = await getWordsByGrade(8);
-          console.log(`📊 8급 단어 ${testWords.length}개 확인`);
+          const testWords = await getWordsByGrade('8급');
 
           if (testWords.length === 0) {
             throw new Error('8급 단어가 데이터베이스에 없습니다');
@@ -771,14 +765,14 @@ export const useAppStore = create<AppState>()(
         console.log('🧹 캐시 초기화');
         set({
           cachedWords: {
-            1: [],
-            2: [],
-            3: [],
-            4: [],
-            5: [],
-            6: [],
-            7: [],
-            8: [],
+            '1급': [],
+            '2급': [],
+            '3급': [],
+            '4급': [],
+            '5급': [],
+            '6급': [],
+            '7급': [],
+            '8급': [],
           },
         });
       },
@@ -816,10 +810,8 @@ export const useAppStore = create<AppState>()(
 
         if (newFavorites.has(wordId)) {
           newFavorites.delete(wordId);
-          console.log(`💔 단어 즐겨찾기 해제: ${wordId}`);
         } else {
           newFavorites.add(wordId);
-          console.log(`💖 단어 즐겨찾기 추가: ${wordId}`);
         }
 
         set({ favoriteWords: newFavorites });
@@ -837,10 +829,10 @@ export const useAppStore = create<AppState>()(
 
       // 다중 급수 설정
       setSelectedGrades: (grades: HanjaGrade[]) => {
-        console.log(`📚 선택된 급수: ${grades.join(', ')}급`);
+        console.log(`📚 선택된 급수: ${grades.join(', ')}`);
 
         // 하위 호환성을 위해 selectedGrade도 업데이트 (첫 번째 급수 또는 null)
-        const primaryGrade = grades.length > 0 ? grades[0] : null;
+        const primaryGrade = grades.length > 0 ? grades[0] : undefined;
 
         set({
           selectedGrades: grades,

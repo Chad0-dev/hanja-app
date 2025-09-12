@@ -23,7 +23,6 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { id: 'grade-selection', title: '급수 선택' },
   { id: 'hanja-quiz', title: '한자 문제' },
-  { id: 'word-book', title: '단어장' },
   { id: 'settings', title: '설정' },
   { id: 'help', title: '도움말' },
 ];
@@ -55,9 +54,12 @@ export const HamburgerMenu: React.FC = () => {
     } else if (item.id === 'settings') {
       // 설정 페이지로 이동
       router.push('/(tabs)/settings');
-    } else if (item.id === 'word-book') {
-      // 단어장 페이지로 이동
-      router.push('/(tabs)/wordbook');
+    } else if (item.id === 'help') {
+      // 도움말 페이지로 이동
+      router.push('/(tabs)/help');
+    } else if (item.id === 'hanja-quiz') {
+      // 준비중 알럿 표시
+      Alert.alert('알림', '한자 문제 기능은 준비 중입니다.');
     } else {
       // 다른 메뉴 아이템들
       Alert.alert('알림', `${item.title} 기능은 준비 중입니다.`);
@@ -69,7 +71,7 @@ export const HamburgerMenu: React.FC = () => {
   const showGradeSelection = () => {
     const grades = [8, 7, 6, 5, 4, 3];
     const gradeButtons = grades.map(grade => ({
-      text: `${grade}급`,
+      text: `${grade}`,
       onPress: () => selectGrade(grade),
     }));
 
@@ -86,7 +88,7 @@ export const HamburgerMenu: React.FC = () => {
     try {
       setSelectedGrade(grade as any);
       await initializeCardStack();
-      Alert.alert('완료', `${grade}급 한자 학습으로 변경되었습니다.`);
+      Alert.alert('완료', `${grade} 한자 학습으로 변경되었습니다.`);
     } catch (error) {
       console.error('급수 변경 실패:', error);
       Alert.alert('오류', '급수 변경에 실패했습니다.');

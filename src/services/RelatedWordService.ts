@@ -73,7 +73,6 @@ export class RelatedWordService {
       // 3. 연관성이 없으면 null 반환 (랜덤 단어는 상위에서 처리)
       return null;
     } catch (error) {
-      console.error('❌ 연관단어 검색 실패:', error);
       return null;
     }
   }
@@ -186,7 +185,6 @@ export class RelatedWordService {
 
       return this.parseWordResults(filteredResults);
     } catch (error) {
-      console.error('❌ 같은 한자 단어 검색 실패:', error);
       return [];
     }
   }
@@ -263,7 +261,6 @@ export class RelatedWordService {
 
       return this.parseWordResults(filteredResults);
     } catch (error) {
-      console.error('❌ 같은 부수 단어 검색 실패:', error);
       return [];
     }
   }
@@ -335,7 +332,6 @@ export class RelatedWordService {
 
       return characters;
     } catch (error) {
-      console.error('❌ 한자 데이터 파싱 에러:', error);
       return [];
     }
   }
@@ -401,7 +397,6 @@ export class RelatedWordService {
         totalAvailable: (totalResult as any)?.total || 0,
       };
     } catch (error) {
-      console.error('❌ 연관단어 통계 조회 실패:', error);
       return { sameCharacterCount: 0, sameRadicalCount: 0, totalAvailable: 0 };
     }
   }

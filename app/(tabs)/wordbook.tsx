@@ -60,9 +60,13 @@ export default function WordbookScreen() {
       });
 
       const extractedCharacters = Array.from(charactersMap.values());
+      // 한자를 가나다 순(pronunciation 기준)으로 정렬
+      extractedCharacters.sort((a, b) =>
+        a.pronunciation.localeCompare(b.pronunciation, 'ko')
+      );
       setCharacters(extractedCharacters);
     } catch (error) {
-      console.error('❌ [단어장] 데이터 로드 실패:', error);
+      // 데이터 로드 실패 시 빈 배열로 설정
     } finally {
       setLoading(false);
     }
@@ -235,32 +239,37 @@ export default function WordbookScreen() {
               데이터베이스를 확인하거나 앱을 재시작해보세요
             </Text>
           </View>
+        ) : activeTab === 'characters' ? (
+          <FlatList
+            data={characters.filter(item => {
+              if (!searchQuery) return true;
+              const query = searchQuery.toLowerCase();
+              return (
+                item.character.includes(query) ||
+                item.pronunciation.toLowerCase().includes(query) ||
+                item.meaning.toLowerCase().includes(query)
+              );
+            })}
+            renderItem={renderCharacterCard}
+            keyExtractor={item => item.id}
+            numColumns={4}
+            contentContainerStyle={styles.gridContainer}
+            showsVerticalScrollIndicator={false}
+            refreshing={loading}
+            onRefresh={() => loadData(selectedGrade)}
+          />
         ) : (
           <FlatList
-            data={(activeTab === 'characters' ? characters : words).filter(
-              item => {
-                if (!searchQuery) return true;
-                const query = searchQuery.toLowerCase();
-                if (activeTab === 'characters') {
-                  const char = item as HanjaCharacter;
-                  return (
-                    char.character.includes(query) ||
-                    char.pronunciation.toLowerCase().includes(query) ||
-                    char.meaning.toLowerCase().includes(query)
-                  );
-                } else {
-                  const word = item as HanjaWordCard;
-                  return (
-                    word.word.includes(query) ||
-                    word.pronunciation.toLowerCase().includes(query) ||
-                    word.meaning.toLowerCase().includes(query)
-                  );
-                }
-              }
-            )}
-            renderItem={
-              activeTab === 'characters' ? renderCharacterCard : renderWordCard
-            }
+            data={words.filter(item => {
+              if (!searchQuery) return true;
+              const query = searchQuery.toLowerCase();
+              return (
+                item.word.includes(query) ||
+                item.pronunciation.toLowerCase().includes(query) ||
+                item.meaning.toLowerCase().includes(query)
+              );
+            })}
+            renderItem={renderWordCard}
             keyExtractor={item => item.id}
             numColumns={4}
             contentContainerStyle={styles.gridContainer}

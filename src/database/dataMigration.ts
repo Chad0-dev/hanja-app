@@ -231,7 +231,7 @@ const verifyMigration = async (db: SQLite.SQLiteDatabase): Promise<void> => {
 
     console.log('📊 급수별 단어 수:');
     gradeStats.forEach((row: any) => {
-      console.log(`   ${row.grade}급: ${row.count}개`);
+      console.log(`   ${row.grade}: ${row.count}개`);
     });
   } catch (error) {
     console.error('❌ 마이그레이션 검증 실패:', error);

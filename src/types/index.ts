@@ -1,5 +1,13 @@
 // 한자 급수 타입 정의
-export type HanjaGrade = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type HanjaGrade =
+  | '1급'
+  | '2급'
+  | '3급'
+  | '4급'
+  | '5급'
+  | '6급'
+  | '7급'
+  | '8급';
 
 // 한자 단어 카드 타입 정의 (개선됨)
 export interface HanjaWordCard {

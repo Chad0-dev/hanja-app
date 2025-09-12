@@ -74,7 +74,7 @@ export const checkGradeCount = async (grade: number): Promise<void> => {
       'SELECT COUNT(*) as count FROM words WHERE grade = ?',
       [grade]
     );
-    console.log(`📚 ${grade}급: ${(result as any)?.count}개`);
+    console.log(`📚 ${grade}: ${(result as any)?.count}개`);
   } catch (error) {
     console.error(`❌ ${grade}급 확인 실패:`, error);
   }
@@ -264,7 +264,7 @@ export const diagnoseDatabaseRelations = async (): Promise<void> => {
     console.log(`📊 급수별 분석:`);
     gradeAnalysis.forEach((row: any) => {
       console.log(
-        `   ${row.grade}급: 단어 ${row.word_count}개, 관계 ${row.relation_count}개`
+        `   ${row.grade}: 단어 ${row.word_count}개, 관계 ${row.relation_count}개`
       );
     });
 
