@@ -3,6 +3,7 @@ export { ThemedText } from './ThemedText';
 export { ThemedView } from './ThemedView';
 
 // Interactive Components
+export { AdBannerMockup } from './AdBannerMockup';
 export { CardDeck } from './CardDeck';
 export { DeckCard } from './DeckCard';
 export { DragonCharacter } from './DragonCharacter';

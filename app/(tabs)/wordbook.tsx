@@ -1,3 +1,4 @@
+import { AdBannerMockup } from '@/src/components';
 import { AppColors } from '@/src/constants/AppColors';
 import { wordData } from '@/src/data/wordData';
 import { useAppStore } from '@/src/stores/useAppStore';
@@ -279,6 +280,9 @@ export default function WordbookScreen() {
           />
         )}
       </View>
+      
+      {/* 하단 배너 광고 목업 */}
+      <AdBannerMockup />
     </ImageBackground>
   );
 }
