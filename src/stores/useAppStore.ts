@@ -115,6 +115,9 @@ interface AppState {
   // 성능 최적화 헬퍼
   loadCards: (grade?: HanjaGrade | null) => Promise<HanjaWordCard[]>;
 
+  // 북마크 관련 실시간 업데이트
+  removeBookmarkedWordFromStack: (wordId: string) => void;
+
   // 캐시된 데이터 관리
   cachedWords: Record<HanjaGrade, HanjaWordCard[]>;
   clearCache: () => void;
@@ -322,6 +325,20 @@ export const useAppStore = create<AppState>()(
         swipeDirection: 'left' | 'right'
       ) => {
         try {
+          // 0. 먼저 현재 카드가 북마크된 카드인지 확인하고 제거
+          const { isWordBookmarked } = await import('../database/hanjaDB');
+          const isCurrentCardBookmarked = await isWordBookmarked(
+            currentCard.id
+          );
+
+          if (isCurrentCardBookmarked) {
+            console.log(
+              `📚 북마크된 카드 스와이프됨 - 스택에서 제거: ${currentCard.word}`
+            );
+            get().removeBookmarkedWordFromStack(currentCard.id);
+            return; // 북마크된 카드는 연관단어 로직 없이 바로 제거
+          }
+
           const {
             selectedGrades,
             cardHistory,
@@ -838,6 +855,72 @@ export const useAppStore = create<AppState>()(
           selectedGrades: grades,
           selectedGrade: primaryGrade,
         });
+      },
+
+      // 북마크된 단어를 현재 카드 스택에서 실시간 제거
+      removeBookmarkedWordFromStack: (wordId: string) => {
+        const { cardStack, currentCardIndex, currentCard } = get();
+
+        // 현재 스택에서 북마크된 단어 제거
+        const filteredStack = cardStack.filter(card => card.id !== wordId);
+
+        if (filteredStack.length === cardStack.length) {
+          // 제거할 카드가 없었음 (이미 스택에 없음)
+          return;
+        }
+
+        console.log(`📚 북마크된 단어 실시간 제거: ${wordId}`);
+        console.log(
+          `📊 카드 스택: ${cardStack.length}개 → ${filteredStack.length}개`
+        );
+
+        // 현재 카드가 제거된 카드인지 확인
+        const isCurrentCardRemoved = currentCard?.id === wordId;
+
+        if (isCurrentCardRemoved) {
+          // 현재 카드가 제거된 경우
+          if (filteredStack.length === 0) {
+            // 모든 카드가 제거된 경우
+            set({
+              cardStack: filteredStack,
+              currentCardIndex: 0,
+              currentCard: null,
+            });
+            console.log('📭 모든 카드가 제거되었습니다');
+          } else {
+            // 다음 카드로 이동 (인덱스는 그대로, 배열이 줄어들었으므로)
+            const newIndex = Math.min(
+              currentCardIndex,
+              filteredStack.length - 1
+            );
+            const newCurrentCard = filteredStack[newIndex];
+
+            set({
+              cardStack: filteredStack,
+              currentCardIndex: newIndex,
+              currentCard: newCurrentCard,
+            });
+            console.log(
+              `🔄 현재 카드 변경: ${newCurrentCard.word} (${newCurrentCard.pronunciation})`
+            );
+          }
+        } else {
+          // 현재 카드가 아닌 다른 카드가 제거된 경우
+          let newIndex = currentCardIndex;
+
+          // 현재 인덱스 이전에 제거된 카드가 있으면 인덱스 조정
+          const removedCardIndex = cardStack.findIndex(
+            card => card.id === wordId
+          );
+          if (removedCardIndex !== -1 && removedCardIndex < currentCardIndex) {
+            newIndex = currentCardIndex - 1;
+          }
+
+          set({
+            cardStack: filteredStack,
+            currentCardIndex: newIndex,
+          });
+        }
       },
     }),
     {

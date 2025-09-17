@@ -37,8 +37,19 @@ export const migrateDataToSQLite = async (): Promise<void> => {
   try {
     const db = await initializeDatabase();
 
-    // 기존 데이터 삭제 (개발 중에만 사용)
-    await clearExistingData(db);
+    // 데이터가 이미 존재하는지 확인
+    const existingWordsCount = await db.getFirstAsync(
+      'SELECT COUNT(*) as count FROM words'
+    );
+    const wordsCount = (existingWordsCount as any)?.count || 0;
+
+    if (wordsCount > 0) {
+      console.log(`📊 기존 데이터 발견: ${wordsCount}개 단어`);
+      console.log('✅ 마이그레이션 건너뛰기 (데이터 보존)');
+      return;
+    }
+
+    console.log('📝 새로운 데이터베이스 - 초기 데이터 삽입 시작');
 
     // characterData.ts에서 한자 데이터 삽입
     await insertCharactersFromData(db);
@@ -60,16 +71,21 @@ export const migrateDataToSQLite = async (): Promise<void> => {
 };
 
 /**
- * 기존 데이터 삭제 (개발용)
+ * 기존 데이터 삭제 (개발용 - 북마크 포함 모든 데이터 삭제)
+ * ⚠️ 주의: 이 함수는 북마크를 포함한 모든 사용자 데이터를 삭제합니다!
  */
-const clearExistingData = async (db: SQLite.SQLiteDatabase): Promise<void> => {
+export const clearAllDataForDevelopment = async (): Promise<void> => {
   try {
+    const db = await initializeDatabase();
     await db.execAsync('DELETE FROM word_characters');
     await db.execAsync('DELETE FROM words');
     await db.execAsync('DELETE FROM characters');
-    console.log('🗑️ 기존 데이터 삭제 완료');
+    console.log('🗑️ 개발용: 모든 데이터 삭제 완료 (북마크 포함)');
+
+    // 데이터 삭제 후 재마이그레이션
+    await migrateDataToSQLite();
   } catch (error) {
-    console.error('❌ 기존 데이터 삭제 실패:', error);
+    console.error('❌ 개발용 데이터 삭제 실패:', error);
     throw error;
   }
 };

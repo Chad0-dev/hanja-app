@@ -5,6 +5,7 @@ export { ThemedView } from './ThemedView';
 // Interactive Components
 export { AdBannerMockup } from './AdBannerMockup';
 export { CardDeck } from './CardDeck';
+export { CelebrationCard } from './CelebrationCard';
 export { DeckCard } from './DeckCard';
 export { DragonCharacter } from './DragonCharacter';
 export { FlippableHanjaCard } from './FlippableHanjaCard';

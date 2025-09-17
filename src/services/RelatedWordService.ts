@@ -1,4 +1,4 @@
-import { initializeDatabase } from '../database/hanjaDB';
+import { getBookmarkedWordIds, initializeDatabase } from '../database/hanjaDB';
 import { HanjaGrade, HanjaWordCard } from '../types';
 
 /**
@@ -128,18 +128,24 @@ export class RelatedWordService {
     if (!db) return [];
 
     try {
+      // 북마크된 단어 ID들 가져오기
+      const bookmarkedIds = await getBookmarkedWordIds();
+
+      // 모든 제외할 ID들 합치기 (기존 + 북마크된 단어들)
+      const allExcludeIds = [...excludeRecentIds, ...bookmarkedIds];
+
       // 선택된 급수들을 쿼리에 사용할 수 있도록 변환
       const gradeParams = selectedGrades.map(() => '?').join(',');
 
-      // 최근 ID들을 제외하는 조건 생성
-      const excludeRecentCondition =
-        excludeRecentIds.length > 0
-          ? `AND w2.id NOT IN (${excludeRecentIds.map(() => '?').join(',')})`
+      // 제외할 ID들을 위한 조건 생성
+      const excludeAllCondition =
+        allExcludeIds.length > 0
+          ? `AND w2.id NOT IN (${allExcludeIds.map(() => '?').join(',')})`
           : '';
 
-      const excludeRecentCondition2 =
-        excludeRecentIds.length > 0
-          ? `AND w.id NOT IN (${excludeRecentIds.map(() => '?').join(',')})`
+      const excludeAllCondition2 =
+        allExcludeIds.length > 0
+          ? `AND w.id NOT IN (${allExcludeIds.map(() => '?').join(',')})`
           : '';
 
       const query = `
@@ -155,10 +161,12 @@ export class RelatedWordService {
           WHERE c2.character = ?
           AND w2.grade IN (${gradeParams})
           AND w2.id != ?
-          ${excludeRecentCondition}
+          AND w2.is_bookmarked != 1
+          ${excludeAllCondition}
         )
         AND w.grade IN (${gradeParams})
-        ${excludeRecentCondition2}
+        AND w.is_bookmarked != 1
+        ${excludeAllCondition2}
         GROUP BY w.id
         ORDER BY RANDOM()
         LIMIT 15
@@ -168,17 +176,17 @@ export class RelatedWordService {
         character,
         ...selectedGrades,
         excludeWordId,
-        ...(excludeRecentIds.length > 0 ? excludeRecentIds : []),
+        ...(allExcludeIds.length > 0 ? allExcludeIds : []),
         ...selectedGrades,
-        ...(excludeRecentIds.length > 0 ? excludeRecentIds : []),
+        ...(allExcludeIds.length > 0 ? allExcludeIds : []),
       ];
       const result = await db.getAllAsync(query, params);
 
-      // 추가 안전장치: 현재 카드와 최근 카드들 한번 더 필터링
+      // 추가 안전장치: 현재 카드와 최근 카드들, 북마크된 단어들 한번 더 필터링
       const filteredResults = this.filterResults(
         result,
         excludeWordId,
-        excludeRecentIds,
+        allExcludeIds,
         currentWord,
         recentWords
       );
@@ -204,18 +212,24 @@ export class RelatedWordService {
     if (!db) return [];
 
     try {
+      // 북마크된 단어 ID들 가져오기
+      const bookmarkedIds = await getBookmarkedWordIds();
+
+      // 모든 제외할 ID들 합치기 (기존 + 북마크된 단어들)
+      const allExcludeIds = [...excludeRecentIds, ...bookmarkedIds];
+
       // 선택된 급수들을 쿼리에 사용할 수 있도록 변환
       const gradeParams = selectedGrades.map(() => '?').join(',');
 
-      // 최근 ID들을 제외하는 조건 생성
-      const excludeRecentCondition =
-        excludeRecentIds.length > 0
-          ? `AND w2.id NOT IN (${excludeRecentIds.map(() => '?').join(',')})`
+      // 제외할 ID들을 위한 조건 생성
+      const excludeAllCondition =
+        allExcludeIds.length > 0
+          ? `AND w2.id NOT IN (${allExcludeIds.map(() => '?').join(',')})`
           : '';
 
-      const excludeRecentCondition2 =
-        excludeRecentIds.length > 0
-          ? `AND w.id NOT IN (${excludeRecentIds.map(() => '?').join(',')})`
+      const excludeAllCondition2 =
+        allExcludeIds.length > 0
+          ? `AND w.id NOT IN (${allExcludeIds.map(() => '?').join(',')})`
           : '';
 
       const query = `
@@ -231,10 +245,12 @@ export class RelatedWordService {
           WHERE c2.radical = ?
           AND w2.grade IN (${gradeParams})
           AND w2.id != ?
-          ${excludeRecentCondition}
+          AND w2.is_bookmarked != 1
+          ${excludeAllCondition}
         )
         AND w.grade IN (${gradeParams})
-        ${excludeRecentCondition2}
+        AND w.is_bookmarked != 1
+        ${excludeAllCondition2}
         GROUP BY w.id
         ORDER BY RANDOM()
         LIMIT 15
@@ -244,17 +260,17 @@ export class RelatedWordService {
         radical,
         ...selectedGrades,
         excludeWordId,
-        ...(excludeRecentIds.length > 0 ? excludeRecentIds : []),
+        ...(allExcludeIds.length > 0 ? allExcludeIds : []),
         ...selectedGrades,
-        ...(excludeRecentIds.length > 0 ? excludeRecentIds : []),
+        ...(allExcludeIds.length > 0 ? allExcludeIds : []),
       ];
       const result = await db.getAllAsync(query, params);
 
-      // 추가 안전장치: 현재 카드와 최근 카드들 한번 더 필터링
+      // 추가 안전장치: 현재 카드와 최근 카드들, 북마크된 단어들 한번 더 필터링
       const filteredResults = this.filterResults(
         result,
         excludeWordId,
-        excludeRecentIds,
+        allExcludeIds,
         currentWord,
         recentWords
       );

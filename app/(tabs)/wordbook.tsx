@@ -25,7 +25,7 @@ const CARD_WIDTH = (width - 80) / 4;
 type TabType = 'characters' | 'words';
 
 export default function WordbookScreen() {
-  const [activeTab, setActiveTab] = useState<TabType>('characters');
+  const [activeTab, setActiveTab] = useState<TabType>('words');
   const [selectedGrade, setSelectedGrade] = useState<HanjaGrade>('8급');
   const [showGradeDropdown, setShowGradeDropdown] = useState(false);
   const [words, setWords] = useState<HanjaWordCard[]>([]);
@@ -208,19 +208,6 @@ export default function WordbookScreen() {
         {/* 탭 선택 */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'characters' && styles.activeTab]}
-            onPress={() => setActiveTab('characters')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'characters' && styles.activeTabText,
-              ]}
-            >
-              한자
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
             style={[styles.tab, activeTab === 'words' && styles.activeTab]}
             onPress={() => setActiveTab('words')}
           >
@@ -231,6 +218,19 @@ export default function WordbookScreen() {
               ]}
             >
               단어
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'characters' && styles.activeTab]}
+            onPress={() => setActiveTab('characters')}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'characters' && styles.activeTabText,
+              ]}
+            >
+              한자
             </Text>
           </TouchableOpacity>
         </View>

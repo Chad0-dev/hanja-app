@@ -1,17 +1,25 @@
 {
   "expo": {
-    "name": "hanja-app",
-    "slug": "hanja-app",
+    "name": "한자단어장",
+    "slug": "hanja-words",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "hanjaapp",
+    "scheme": "hanjawords",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.chad.hanjawords",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "CFBundleDisplayName": "한자단어장",
+        "CFBundleName": "한자단어장",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.chad.hanjawords",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -37,6 +45,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "081d126c-f24b-4a08-bca3-37ed8ebc53e5"
+      }
     }
   }
 }

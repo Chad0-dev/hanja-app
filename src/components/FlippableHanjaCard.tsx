@@ -7,15 +7,11 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import {
-  PanGestureHandler,
-  PanGestureHandlerGestureEvent,
-} from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolate,
   interpolate,
   runOnJS,
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -99,6 +95,10 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
       try {
         const newBookmarkState = await toggleWordBookmark(card.id);
         setIsBookmarked(newBookmarkState);
+
+        console.log(
+          `📚 북마크 ${newBookmarkState ? '추가' : '제거'}: ${card.word}`
+        );
       } catch (error) {
         console.error('북마크 토글 실패:', error);
       } finally {
@@ -178,53 +178,51 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
     };
 
     /**
-     * 스와이프 제스처 핸들러
+     * 스와이프 제스처 핸들러 (새로운 Gesture API)
      */
-    const gestureHandler =
-      useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-        onStart: () => {
-          hasStartedSwipe.value = false;
-        },
-        onActive: event => {
-          // 실제 드래그가 시작된 시점에서만 스와이프 시작 콜백 실행 (한번만)
-          const dragDistance =
-            Math.abs(event.translationX) + Math.abs(event.translationY);
-          if (dragDistance > 5 && !hasStartedSwipe.value && onSwipeStart) {
-            hasStartedSwipe.value = true;
-            runOnJS(onSwipeStart)();
+    const panGesture = Gesture.Pan()
+      .onStart(() => {
+        hasStartedSwipe.value = false;
+      })
+      .onUpdate(event => {
+        // 실제 드래그가 시작된 시점에서만 스와이프 시작 콜백 실행 (한번만)
+        const dragDistance =
+          Math.abs(event.translationX) + Math.abs(event.translationY);
+        if (dragDistance > 5 && !hasStartedSwipe.value && onSwipeStart) {
+          hasStartedSwipe.value = true;
+          runOnJS(onSwipeStart)();
+        }
+
+        // 카드 위치 업데이트
+        translateX.value = event.translationX;
+        translateY.value = event.translationY * 0.3;
+        opacity.value = 1;
+      })
+      .onEnd(event => {
+        const { translationX, velocityX } = event;
+
+        // 빠른 속도로 스와이프했거나 임계점을 넘었는지 확인
+        const shouldSwipeLeft =
+          translationX < -SWIPE_THRESHOLD || velocityX < -500;
+        const shouldSwipeRight =
+          translationX > SWIPE_THRESHOLD || velocityX > 500;
+
+        if (shouldSwipeLeft) {
+          animateCardOut('left');
+          if (onSwipeLeft) {
+            runOnJS(onSwipeLeft)(card);
           }
-
-          // 카드 위치 업데이트
-          translateX.value = event.translationX;
-          translateY.value = event.translationY * 0.3;
-          opacity.value = 1;
-        },
-        onEnd: event => {
-          const { translationX, velocityX } = event;
-
-          // 빠른 속도로 스와이프했거나 임계점을 넘었는지 확인
-          const shouldSwipeLeft =
-            translationX < -SWIPE_THRESHOLD || velocityX < -500;
-          const shouldSwipeRight =
-            translationX > SWIPE_THRESHOLD || velocityX > 500;
-
-          if (shouldSwipeLeft) {
-            animateCardOut('left');
-            if (onSwipeLeft) {
-              runOnJS(onSwipeLeft)(card);
-            }
-          } else if (shouldSwipeRight) {
-            animateCardOut('right');
-            if (onSwipeRight) {
-              runOnJS(onSwipeRight)(card);
-            }
-          } else {
-            resetCard();
-            if (hasStartedSwipe.value && onSwipeCancel) {
-              runOnJS(onSwipeCancel)();
-            }
+        } else if (shouldSwipeRight) {
+          animateCardOut('right');
+          if (onSwipeRight) {
+            runOnJS(onSwipeRight)(card);
           }
-        },
+        } else {
+          resetCard();
+          if (hasStartedSwipe.value && onSwipeCancel) {
+            runOnJS(onSwipeCancel)();
+          }
+        }
       });
 
     /**
@@ -339,17 +337,17 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
 
     if (hideText) {
       return (
-        <PanGestureHandler onGestureEvent={gestureHandler}>
+        <GestureDetector gesture={panGesture}>
           <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
             <View style={[styles.card, styles.hiddenCard, cardStyle]} />
           </Animated.View>
-        </PanGestureHandler>
+        </GestureDetector>
       );
     }
 
     return (
       <>
-        <PanGestureHandler onGestureEvent={gestureHandler}>
+        <GestureDetector gesture={panGesture}>
           <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
             {/* 단순한 조건부 렌더링 - 크래시 방지 */}
             {!isFlipped ? (
@@ -552,7 +550,7 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
               </View>
             )}
           </Animated.View>
-        </PanGestureHandler>
+        </GestureDetector>
 
         {/* 급수 선택 모달 */}
         <GradeSelector

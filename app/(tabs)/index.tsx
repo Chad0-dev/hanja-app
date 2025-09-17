@@ -42,7 +42,9 @@ export default function HomeScreen() {
   // 현재 카드부터 시작하는 카드 배열 생성 (CardDeck이 변화를 감지할 수 있도록)
   // 성능 최적화: 최대 3장만 생성 (CardDeck에서 2장만 사용하지만 여유분 포함)
   const displayCards = React.useMemo(() => {
-    if (cardStack.length === 0) return [];
+    if (cardStack.length === 0) {
+      return [];
+    }
 
     const maxCards = Math.min(3, cardStack.length);
     const reorderedCards = [];
@@ -51,7 +53,6 @@ export default function HomeScreen() {
       const index = (currentCardIndex + i) % cardStack.length;
       reorderedCards.push(cardStack[index]);
     }
-
     return reorderedCards;
   }, [cardStack, currentCardIndex]);
 
@@ -118,8 +119,8 @@ export default function HomeScreen() {
 
       <View style={styles.overlay}>
         <View style={styles.cardContainer}>
-          {isLoading || displayCards.length === 0 ? (
-            // 로딩 중이거나 카드가 없을 때
+          {isLoading ? (
+            // 로딩 중일 때만 로딩 텍스트 표시
             <Text style={styles.loadingText}>
               다음 한자 카드 준비 중...
               {cardStack.length > 0 && (

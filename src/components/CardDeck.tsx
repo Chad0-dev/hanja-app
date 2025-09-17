@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { withSpring } from 'react-native-reanimated';
 import { useCardAnimations } from '../hooks/useCardAnimations';
 import { HanjaWordCard } from '../types';
+import { CelebrationCard } from './CelebrationCard';
 import { DeckCard } from './DeckCard';
 
 interface CardDeckProps {
@@ -52,9 +53,13 @@ export const CardDeck: React.FC<CardDeckProps> = ({
     [cards, maxVisibleCards]
   );
 
-  // 카드가 없으면 빈 컴포넌트 반환
+  // 카드가 없으면 축하 카드 표시
   if (cards.length === 0) {
-    return <View style={styles.deckContainer} />;
+    return (
+      <View style={styles.deckContainer}>
+        <CelebrationCard />
+      </View>
+    );
   }
 
   const handleSwipeStart = () => {

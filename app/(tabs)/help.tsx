@@ -9,15 +9,11 @@ import {
   View,
 } from 'react-native';
 import {
+  Gesture,
+  GestureDetector,
   GestureHandlerRootView,
-  PanGestureHandler,
-  PanGestureHandlerGestureEvent,
 } from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedGestureHandler,
-  useSharedValue,
-} from 'react-native-reanimated';
+import Animated, { runOnJS, useSharedValue } from 'react-native-reanimated';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -78,34 +74,32 @@ export default function HelpScreen() {
     }
   };
 
-  // 제스처 핸들러
-  const gestureHandler =
-    useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-      onStart: () => {
-        hasStartedSwipe.value = false;
-      },
-      onActive: event => {
-        // 실제 드래그가 시작된 시점 확인
-        const dragDistance =
-          Math.abs(event.translationX) + Math.abs(event.translationY);
-        if (dragDistance > 10 && !hasStartedSwipe.value) {
-          hasStartedSwipe.value = true;
-        }
-      },
-      onEnd: event => {
-        const threshold = screenWidth * 0.2;
-        const { translationX, velocityX } = event;
+  // 제스처 핸들러 (새로운 Gesture API)
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      hasStartedSwipe.value = false;
+    })
+    .onUpdate(event => {
+      // 실제 드래그가 시작된 시점 확인
+      const dragDistance =
+        Math.abs(event.translationX) + Math.abs(event.translationY);
+      if (dragDistance > 10 && !hasStartedSwipe.value) {
+        hasStartedSwipe.value = true;
+      }
+    })
+    .onEnd(event => {
+      const threshold = screenWidth * 0.2;
+      const { translationX, velocityX } = event;
 
-        // 빠른 속도로 스와이프했거나 임계점을 넘었는지 확인
-        const shouldSwipeLeft = translationX < -threshold || velocityX < -500;
-        const shouldSwipeRight = translationX > threshold || velocityX > 500;
+      // 빠른 속도로 스와이프했거나 임계점을 넘었는지 확인
+      const shouldSwipeLeft = translationX < -threshold || velocityX < -500;
+      const shouldSwipeRight = translationX > threshold || velocityX > 500;
 
-        if (shouldSwipeLeft) {
-          runOnJS(goToNext)();
-        } else if (shouldSwipeRight) {
-          runOnJS(goToPrev)();
-        }
-      },
+      if (shouldSwipeLeft) {
+        runOnJS(goToNext)();
+      } else if (shouldSwipeRight) {
+        runOnJS(goToPrev)();
+      }
     });
 
   return (
@@ -118,7 +112,7 @@ export default function HelpScreen() {
         <View style={styles.container}>
           {/* 카드 컨테이너 */}
           <View style={styles.cardContainer}>
-            <PanGestureHandler onGestureEvent={gestureHandler}>
+            <GestureDetector gesture={panGesture}>
               <Animated.View style={styles.card}>
                 <Text style={styles.cardTitle}>
                   {helpCards[currentIndex].title}
@@ -147,7 +141,7 @@ export default function HelpScreen() {
                   ))}
                 </View>
               </Animated.View>
-            </PanGestureHandler>
+            </GestureDetector>
           </View>
         </View>
 

@@ -1,5 +1,8 @@
-import { migrateDataToSQLite } from './dataMigration';
-import { initializeDatabase } from './hanjaDB';
+import {
+  clearAllDataForDevelopment,
+  migrateDataToSQLite,
+} from './dataMigration';
+import { getBookmarkedWordIds, initializeDatabase } from './hanjaDB';
 
 /**
  * 개발용 디버깅 유틸리티 함수들
@@ -327,6 +330,36 @@ export const forceAppReinitialize = async (): Promise<void> => {
 };
 
 /**
+ * 북마크된 단어 목록 출력
+ */
+export const showBookmarkedWords = async (): Promise<void> => {
+  try {
+    const bookmarkedIds = await getBookmarkedWordIds();
+    console.log(`📚 북마크된 단어 ${bookmarkedIds.length}개:`);
+
+    if (bookmarkedIds.length === 0) {
+      console.log('   (북마크된 단어가 없습니다)');
+      return;
+    }
+
+    const db = await initializeDatabase();
+    for (const id of bookmarkedIds) {
+      const word = await db.getFirstAsync(
+        'SELECT word, pronunciation, meaning FROM words WHERE id = ?',
+        [id]
+      );
+      if (word) {
+        console.log(
+          `   ${(word as any).word} (${(word as any).pronunciation}) - ${(word as any).meaning}`
+        );
+      }
+    }
+  } catch (error) {
+    console.error('❌ 북마크 목록 조회 실패:', error);
+  }
+};
+
+/**
  * 개발자 콘솔에서 사용할 수 있는 전역 함수들 등록 (최적화)
  */
 export const registerDebugFunctions = (): void => {
@@ -340,6 +373,8 @@ export const registerDebugFunctions = (): void => {
       fullReset: resetAndMigrate,
       appReset: forceAppReinitialize, // 새로운 함수 추가
       diagnose: diagnoseDatabaseRelations, // 관계 테이블 진단
+      bookmarks: showBookmarkedWords, // 북마크 목록 확인
+      clearAll: clearAllDataForDevelopment, // ⚠️ 위험: 모든 데이터 삭제
     };
 
     console.log('🛠️ 디버그 함수들이 등록되었습니다:');
@@ -349,10 +384,12 @@ export const registerDebugFunctions = (): void => {
     console.log('   hanjaDebug.reset() - 데이터베이스 리셋');
     console.log('   hanjaDebug.fullReset() - 완전 재초기화');
     console.log('   hanjaDebug.appReset() - 앱 스토어 통한 재초기화');
-    console.log('   hanjaDebug.diagnose() - 관계 테이블 진단 (중요!)');
+    console.log('   hanjaDebug.diagnose() - 관계 테이블 진단');
+    console.log('   hanjaDebug.bookmarks() - 북마크된 단어 목록');
+    console.log('   hanjaDebug.clearAll() - ⚠️ 모든 데이터 삭제 (북마크 포함)');
     console.log('');
     console.log(
-      '🚨 현재 빈 데이터 문제 해결을 위해 hanjaDebug.diagnose() 실행 권장!'
+      '🎯 북마크 문제 해결: 이제 북마크가 앱 재시작 후에도 유지됩니다!'
     );
   }
 };

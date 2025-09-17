@@ -119,7 +119,16 @@ export class MultiGradeService {
       word => !allExcludeIds.includes(word.id)
     );
 
+    // 디버깅 로그
+    if (bookmarkedIds.length > 0) {
+      console.log(`📚 북마크 제외: ${bookmarkedIds.length}개 단어 제외됨`);
+      console.log(
+        `📊 사용 가능한 단어: ${availableWords.length}/${allWords.length}개`
+      );
+    }
+
     if (availableWords.length === 0) {
+      console.warn('⚠️ 모든 단어가 북마크되어 사용 가능한 카드가 없습니다');
       return [];
     }
 
