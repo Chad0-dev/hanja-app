@@ -1,4 +1,4 @@
-import { AdBannerMockup } from '@/src/components';
+import { AdBannerSafe, getAdUnitId } from '@/src/components';
 import React from 'react';
 import {
   Dimensions,
@@ -73,8 +73,8 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* 하단 배너 광고 목업 */}
-      <AdBannerMockup />
+      {/* 하단 광고 배너 - 안전한 AdMob 배너 */}
+      <AdBannerSafe adUnitId={getAdUnitId('banner')} />
     </ImageBackground>
   );
 }

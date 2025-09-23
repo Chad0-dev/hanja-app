@@ -1,8 +1,9 @@
 import {
-  AdBannerMockup,
+  AdBannerSafe,
   CardDeck,
   DragonCharacter,
   HamburgerMenu,
+  getAdUnitId,
 } from '@/src/components';
 import { useAppStore } from '@/src/stores/useAppStore';
 import React, { useEffect, useState } from 'react';
@@ -161,8 +162,8 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* 하단 배너 광고 목업 */}
-      <AdBannerMockup />
+      {/* 하단 광고 배너 - 안전한 AdMob 배너 */}
+      <AdBannerSafe adUnitId={getAdUnitId('banner')} />
     </ImageBackground>
   );
 }

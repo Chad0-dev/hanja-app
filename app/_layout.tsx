@@ -19,9 +19,13 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  // 디버그 함수 등록 (개발 모드에서만)
+  // 앱 초기화 (디버그 함수 등록)
   useEffect(() => {
+    // 디버그 함수 등록 (개발 모드에서만)
     registerDebugFunctions();
+
+    // AdMob 초기화는 AdBannerSafe에서 동적으로 처리
+    console.log('✅ 앱 초기화 완료');
   }, []);
 
   if (!loaded) {

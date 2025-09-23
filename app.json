@@ -2,7 +2,7 @@
   "expo": {
     "name": "한자단어장",
     "slug": "hanja-words",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "hanjawords",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chad.hanjawords",
-      "buildNumber": "1.0.0",
+      "buildNumber": "1.0.1",
       "infoPlist": {
         "CFBundleDisplayName": "한자단어장",
         "CFBundleName": "한자단어장",
@@ -40,6 +40,12 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-3195009493032065~6057854187"
         }
       ]
     ],

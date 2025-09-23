@@ -12,6 +12,9 @@ export { FlippableHanjaCard } from './FlippableHanjaCard';
 export { GradeSelector } from './GradeSelector';
 export { HamburgerMenu } from './HamburgerMenu';
 
+// Google AdMob Components
+export * from './ads';
+
 // UI Kit
 export { IconSymbol } from './ui/IconSymbol';
 export { default as TabBarBackground } from './ui/TabBarBackground';

@@ -21,6 +21,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { id: 'hanja-quiz', title: '한자 문제' },
   { id: 'four-character-idiom', title: '사자성어' },
+  { id: 'store', title: '상점' },
   { id: 'settings', title: '설정' },
   { id: 'help', title: '도움말' },
 ];
@@ -44,12 +45,17 @@ export const HamburgerMenu: React.FC = () => {
     } else if (item.id === 'help') {
       // 도움말 페이지로 이동
       router.push('/(tabs)/help');
+    } else if (item.id === 'store') {
+      // 상점 준비중 알럿 표시
+      Alert.alert('상점', '상점 기능은 준비 중 입니다.', [
+        { text: '확인', style: 'default' },
+      ]);
     } else if (item.id === 'hanja-quiz') {
       // 준비중 알럿 표시
-      Alert.alert('알림', '한자 문제 기능은 준비 중입니다.');
+      Alert.alert('알림', '한자 문제 기능은 준비 중 입니다.');
     } else if (item.id === 'four-character-idiom') {
       // 준비중 알럿 표시
-      Alert.alert('알림', '사자성어 기능은 준비 중입니다.');
+      Alert.alert('알림', '사자성어 기능은 준비 중 입니다.');
     } else {
       // 다른 메뉴 아이템들
       Alert.alert('알림', `${item.title} 기능은 준비 중입니다.`);

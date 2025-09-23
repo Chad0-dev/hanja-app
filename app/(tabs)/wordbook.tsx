@@ -1,4 +1,4 @@
-import { AdBannerMockup } from '@/src/components';
+import { AdBannerSafe, getAdUnitId } from '@/src/components';
 import { AppColors } from '@/src/constants/AppColors';
 import { wordData } from '@/src/data/wordData';
 import {
@@ -337,8 +337,8 @@ export default function WordbookScreen() {
         )}
       </View>
 
-      {/* 하단 배너 광고 목업 */}
-      <AdBannerMockup />
+      {/* 하단 광고 배너 - 안전한 AdMob 배너 */}
+      <AdBannerSafe adUnitId={getAdUnitId('banner')} />
     </ImageBackground>
   );
 }
