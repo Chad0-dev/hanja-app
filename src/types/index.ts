@@ -18,6 +18,7 @@ export interface HanjaWordCard {
   characters: HanjaCharacter[]; // 구성 한자들
   grade: HanjaGrade; // 급수 (8급이 가장 쉬움, 1급이 가장 어려움)
   isMemorized: boolean; // 암기 완료 여부
+  isBookmarked?: boolean; // 북마크 여부
   relatedWords: {
     leftSwipe: string[]; // 첫 번째 한자 관련 단어 IDs
     rightSwipe: string[]; // 두 번째 한자 관련 단어 IDs

@@ -3,6 +3,7 @@ import {
   CardDeck,
   DragonCharacter,
   HamburgerMenu,
+  LearningProgress,
   getAdUnitId,
 } from '@/src/components';
 import { useAppStore } from '@/src/stores/useAppStore';
@@ -117,6 +118,9 @@ export default function HomeScreen() {
     >
       {/* 햄버거 메뉴 */}
       <HamburgerMenu />
+
+      {/* 학습 현황 표시 */}
+      <LearningProgress />
 
       <View style={styles.overlay}>
         <View style={styles.cardContainer}>

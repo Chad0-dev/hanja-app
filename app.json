@@ -2,7 +2,7 @@
   "expo": {
     "name": "한자단어장",
     "slug": "hanja-words",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "hanjawords",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chad.hanjawords",
-      "buildNumber": "1.0.1",
+      "buildNumber": "1.0.7",
       "infoPlist": {
         "CFBundleDisplayName": "한자단어장",
         "CFBundleName": "한자단어장",

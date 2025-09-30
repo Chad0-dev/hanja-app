@@ -236,6 +236,7 @@ export const getWordsByGrade = async (
         meaning: row.meaning,
         grade: `${row.grade}급` as HanjaGrade,
         isMemorized: Boolean(row.isMemorized),
+        isBookmarked: Boolean(row.is_bookmarked),
         characters,
         relatedWords: {
           leftSwipe: row.leftSwipeWords ? JSON.parse(row.leftSwipeWords) : [],

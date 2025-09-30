@@ -11,6 +11,7 @@ export { DragonCharacter } from './DragonCharacter';
 export { FlippableHanjaCard } from './FlippableHanjaCard';
 export { GradeSelector } from './GradeSelector';
 export { HamburgerMenu } from './HamburgerMenu';
+export { LearningProgress, refreshLearningProgress } from './LearningProgress';
 
 // Google AdMob Components
 export * from './ads';

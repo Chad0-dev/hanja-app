@@ -20,6 +20,7 @@ import { isWordBookmarked, toggleWordBookmark } from '../database/hanjaDB';
 import { useGradeSelection } from '../hooks/useGradeSelection';
 import { HanjaWordCard } from '../types';
 import { GradeSelector } from './GradeSelector';
+import { refreshLearningProgress } from './LearningProgress';
 import { IconSymbol } from './ui/IconSymbol';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -95,6 +96,9 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
       try {
         const newBookmarkState = await toggleWordBookmark(card.id);
         setIsBookmarked(newBookmarkState);
+
+        // 학습 현황 실시간 업데이트
+        refreshLearningProgress();
 
         console.log(
           `📚 북마크 ${newBookmarkState ? '추가' : '제거'}: ${card.word}`
@@ -506,8 +510,7 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
                             {char.character} {char.meaning} {char.pronunciation}
                           </Text>
                           <Text style={styles.characterDetails}>
-                            {char.strokeCount}획, {char.radicalName}(
-                            {char.radical})
+                            {char.strokeCount}획, 부수 {char.radical}
                           </Text>
                         </View>
                       ));
