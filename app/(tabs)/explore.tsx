@@ -19,7 +19,9 @@ export default function ExploreScreen() {
 
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>현재 급수</Text>
-              <Text style={styles.infoValue}>{selectedGrade}급</Text>
+              <Text style={styles.infoValue}>
+                {selectedGrade ? `${selectedGrade}` : '선택 없음'}
+              </Text>
             </View>
 
             <View style={styles.infoRow}>

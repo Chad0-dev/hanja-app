@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import React from 'react';
 import { Platform, TouchableOpacity } from 'react-native';
 
@@ -11,13 +11,34 @@ import { useAppStore } from '@/src/stores/useAppStore';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const { canGoBack, goBackToPreviousCard, isLeftHanded } = useAppStore();
+  const {
+    canGoBack,
+    goBackToPreviousCard,
+    isLeftHanded,
+    customUndoHandler,
+    isCustomUndoAvailable,
+  } = useAppStore();
+  const pathname = usePathname();
+  const isHomeRoute = pathname === '/(tabs)' || pathname === '/(tabs)/index' || pathname === '/';
+  const hasCustomUndo = Boolean(customUndoHandler);
+  const isUndoEnabled = isHomeRoute
+    ? canGoBack
+    : hasCustomUndo
+      ? isCustomUndoAvailable
+      : false;
 
   const handleUndoPress = () => {
-    if (canGoBack) {
+    if (!isUndoEnabled) {
+      return;
+    }
+
+    if (isHomeRoute && canGoBack) {
       goBackToPreviousCard();
-      // 홈 탭으로 이동
-      router.push('/(tabs)');
+      return;
+    }
+
+    if (hasCustomUndo && customUndoHandler) {
+      customUndoHandler();
     }
   };
 
@@ -56,17 +77,17 @@ export default function TabLayout() {
         options={{
           title: '',
           tabBarIcon: ({ color }) => (
-            <IconSymbol
-              size={32}
-              name="arrow.uturn.left"
-              color={canGoBack ? color : '#ccc'}
+              <IconSymbol
+                size={32}
+                name="arrow.uturn.left"
+              color={isUndoEnabled ? color : '#ccc'}
             />
           ),
           tabBarButton: props => (
             <TouchableOpacity
-              style={[props.style, { opacity: canGoBack ? 1 : 0.5 }]}
+              style={[props.style, { opacity: isUndoEnabled ? 1 : 0.5 }]}
               onPress={handleUndoPress}
-              disabled={!canGoBack}
+              disabled={!isUndoEnabled}
             >
               {props.children}
             </TouchableOpacity>
@@ -129,9 +150,27 @@ export default function TabLayout() {
         }}
       />
 
+      {/* 숨겨진 사자성어 탭 - 하단 네비게이션에는 표시되지 않음 */}
+      <Tabs.Screen
+        name="four-character-idiom"
+        options={{
+          href: null,
+          title: '',
+        }}
+      />
+
       {/* 숨겨진 한자 문제 탭 - 하단 네비게이션에는 표시되지 않음 */}
       <Tabs.Screen
         name="quiz"
+        options={{
+          href: null, // 하단 탭바에서 숨김
+          title: '',
+        }}
+      />
+
+      {/* 숨겨진 상점 탭 - 하단 네비게이션에는 표시되지 않음 */}
+      <Tabs.Screen
+        name="store"
         options={{
           href: null, // 하단 탭바에서 숨김
           title: '',

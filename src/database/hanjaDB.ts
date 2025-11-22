@@ -369,30 +369,6 @@ export const getWordsByCharacter = async (
 };
 
 /**
- * 단어 암기 상태 업데이트
- */
-export const updateWordMemorized = async (
-  wordId: string,
-  isMemorized: boolean
-): Promise<boolean> => {
-  if (!db) {
-    throw new Error('Database not initialized');
-  }
-
-  try {
-    const result = await db.runAsync(
-      'UPDATE words SET isMemorized = ? WHERE id = ?',
-      [isMemorized ? 1 : 0, wordId]
-    );
-
-    return result.changes > 0;
-  } catch (error) {
-    console.error('❌ 암기 상태 업데이트 실패:', error);
-    throw error;
-  }
-};
-
-/**
  * 급수별 통계 조회
  */
 export const getGradeStatistics = async (): Promise<
@@ -412,16 +388,21 @@ export const getGradeStatistics = async (): Promise<
        ORDER BY grade DESC`
     );
 
-    const stats: Record<HanjaGrade, { total: number; memorized: number }> = {
-      1: { total: 0, memorized: 0 },
-      2: { total: 0, memorized: 0 },
-      3: { total: 0, memorized: 0 },
-      4: { total: 0, memorized: 0 },
-      5: { total: 0, memorized: 0 },
-      6: { total: 0, memorized: 0 },
-      7: { total: 0, memorized: 0 },
-      8: { total: 0, memorized: 0 },
-    };
+    const gradeKeys: HanjaGrade[] = [
+      '1급',
+      '2급',
+      '3급',
+      '4급',
+      '5급',
+      '6급',
+      '7급',
+      '8급',
+    ];
+
+    const stats = gradeKeys.reduce((acc, grade) => {
+      acc[grade] = { total: 0, memorized: 0 };
+      return acc;
+    }, {} as Record<HanjaGrade, { total: number; memorized: number }>);
 
     result.forEach((row: any) => {
       const grade = `${row.grade}급` as HanjaGrade;

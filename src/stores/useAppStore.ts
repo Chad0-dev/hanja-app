@@ -1,10 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-// SQLite 전용 모드 - 시드 데이터만 사용
+
 import { migrateDataToSQLite } from '../database/dataMigration';
 import {
-  updateWordMemorized as dbUpdateWordMemorized,
   getGradeStatistics,
   getWordsByGrade,
   initializeDatabase,
@@ -18,115 +17,109 @@ import {
   StudyProgress,
 } from '../types';
 
+export interface PersistedState {
+  studyProgress: StudyProgress[];
+  selectedGrade: HanjaGrade;
+  selectedGrades: HanjaGrade[];
+  studyMode: 'sequential' | 'random';
+  isDarkMode: boolean;
+  isLeftHanded: boolean;
+  isDbInitialized: boolean;
+  studiedCardIds: string[];
+  savedCardIds: string[];
+  favoriteCharacters: string[];
+  favoriteWords: string[];
+  swipeCount: number;
+  isAdsRemoved: boolean;
+  bookmarkedIdiomIds: string[];
+}
+
 interface AppState {
-  // 카드 스택 관리
   cardStack: HanjaWordCard[];
   currentCardIndex: number;
   currentCard: HanjaWordCard | null;
   isLoading: boolean;
-
-  // 뒤로가기 기능을 위한 히스토리 관리 (스와이프 방향 포함)
   cardHistory: CardHistoryItem[];
   canGoBack: boolean;
-
-  // 학습 추적 (index.tsx에서 사용)
   studiedCardIds: string[];
   savedCardIds: string[];
-
-  // 연관단어 중복 방지 (최근 출현 단어 추적)
-  recentCardIds: string[]; // 최근 10개 카드 ID 추적
-  recentCardWords: string[]; // 최근 10개 카드 단어명 추적
-
-  // 학습 진도 관리
+  recentCardIds: string[];
+  recentCardWords: string[];
   studyProgress: StudyProgress[];
-
-  // 사용자 설정
-  selectedGrade: HanjaGrade; // 하위 호환성을 위해 유지
-  selectedGrades: HanjaGrade[]; // 새로운 다중 급수 선택
+  selectedGrade: HanjaGrade;
+  selectedGrades: HanjaGrade[];
   studyMode: 'sequential' | 'random';
   isDarkMode: boolean;
   isLeftHanded: boolean;
-
-  // 즐겨찾기 시스템
-  favoriteCharacters: Set<string>; // 즐겨찾기 한자 ID들
-  favoriteWords: Set<string>; // 즐겨찾기 단어 ID들
-
-  // 데이터베이스 상태
+  favoriteCharacters: Set<string>;
+  favoriteWords: Set<string>;
   isDbInitialized: boolean;
-
-  // 역방향 애니메이션 트리거 콜백 (스와이프 방향 포함)
   reverseAnimationTrigger: ((direction: 'left' | 'right') => void) | null;
-
-  // 카드 스택 관리 액션들
   initializeCardStack: () => Promise<void>;
   moveToNextCard: () => void;
   moveToPreviousCard: () => void;
   refillCardStack: () => Promise<void>;
-
-  // 스와이프 액션들
   swipeLeft: () => void;
   swipeRight: () => void;
-
-  // 연관단어 스와이프 액션들 (새로운 기능)
   handleSwipeToRelatedWord: (
     currentCard: HanjaWordCard,
     swipeDirection: 'left' | 'right'
   ) => Promise<void>;
-
-  // 뒤로가기 액션
   goBackToPreviousCard: () => void;
-
-  // 역방향 애니메이션 트리거 콜백 (스와이프 방향 포함)
   setReverseAnimationTrigger: (
     callback: (direction: 'left' | 'right') => void
   ) => void;
-
-  // 학습 진도 액션들
+  customUndoHandler: (() => void) | null;
+  isCustomUndoAvailable: boolean;
+  setCustomUndoHandler: (handler: (() => void) | null) => void;
+  setCustomUndoAvailability: (available: boolean) => void;
   recordAnswer: (characterId: string, isCorrect: boolean) => void;
   toggleFavorite: (characterId: string) => void;
   markAsLearned: (characterId: string) => void;
-
-  // 즐겨찾기 액션들
   toggleFavoriteCharacter: (characterId: string) => void;
   toggleFavoriteWord: (wordId: string) => void;
   isFavoriteCharacter: (characterId: string) => boolean;
   isFavoriteWord: (wordId: string) => boolean;
-
-  // 통계 함수들
   getTotalLearned: () => number;
   getFavoriteCount: () => number;
   getAccuracyRate: (characterId?: string) => number;
-
-  // 데이터베이스 관련
   initializeApp: () => Promise<void>;
   getWordsFromDb: (grade?: HanjaGrade) => Promise<HanjaWordCard[]>;
   getDbStatistics: () => Promise<
     Record<HanjaGrade, { total: number; memorized: number }>
   >;
-  setSelectedGrade: (grade: HanjaGrade | undefined) => void; // 하위 호환성을 위해 유지
-  setSelectedGrades: (grades: HanjaGrade[]) => void; // 새로운 다중 급수 설정
-  toggleWordMemorized: (wordId: string) => Promise<void>;
   forceReinitializeDatabase: () => Promise<void>;
-
-  // 설정 관련 액션들
+  setSelectedGrade: (grade: HanjaGrade | undefined) => void;
+  setSelectedGrades: (grades: HanjaGrade[]) => void;
   setDarkMode: (isDark: boolean) => void;
   setLeftHanded: (isLeft: boolean) => void;
-
-  // 성능 최적화 헬퍼
   loadCards: (grade?: HanjaGrade | null) => Promise<HanjaWordCard[]>;
-
-  // 북마크 관련 실시간 업데이트
   removeBookmarkedWordFromStack: (wordId: string) => void;
-
-  // 캐시된 데이터 관리
   cachedWords: Record<HanjaGrade, HanjaWordCard[]>;
   clearCache: () => void;
+  swipeCount: number;
+  incrementSwipeCount: () => void;
+  resetSwipeCount: () => void;
+  isAdsRemoved: boolean;
+  setAdsRemoved: (isRemoved: boolean) => void;
+  bookmarkedIdiomIds: string[];
+  toggleIdiomBookmark: (idiomId: string) => void;
 }
 
+const createEmptyCache = (): Record<HanjaGrade, HanjaWordCard[]> => ({
+  '1급': [],
+  '2급': [],
+  '3급': [],
+  '4급': [],
+  '5급': [],
+  '6급': [],
+  '7급': [],
+  '8급': [],
+});
+
 export const useAppStore = create<AppState>()(
-  persist(
+  persist<AppState>(
     (set, get) => ({
-      // 초기 상태
       cardStack: [],
       currentCardIndex: 0,
       currentCard: null,
@@ -138,8 +131,8 @@ export const useAppStore = create<AppState>()(
       recentCardIds: [],
       recentCardWords: [],
       studyProgress: [],
-      selectedGrade: '8급', // 기본값을 8급으로 설정 (하위 호환성)
-      selectedGrades: ['8급'], // 기본값을 8급으로 설정 (새로운 다중 급수)
+      selectedGrade: '8급',
+      selectedGrades: ['8급'],
       studyMode: 'sequential',
       isDarkMode: false,
       isLeftHanded: false,
@@ -147,27 +140,19 @@ export const useAppStore = create<AppState>()(
       favoriteWords: new Set<string>(),
       isDbInitialized: false,
       reverseAnimationTrigger: null,
+      swipeCount: 0,
+      isAdsRemoved: false,
+      cachedWords: createEmptyCache(),
+      customUndoHandler: null,
+      isCustomUndoAvailable: false,
+      bookmarkedIdiomIds: [],
 
-      // 캐시 초기화
-      cachedWords: {
-        '1급': [],
-        '2급': [],
-        '3급': [],
-        '4급': [],
-        '5급': [],
-        '6급': [],
-        '7급': [],
-        '8급': [],
-      },
-
-      // 카드 스택 관리 (다중 급수 지원)
-      initializeCardStack: async () => {
+      async initializeCardStack() {
         set({ isLoading: true });
         try {
           const { selectedGrades, selectedGrade } = get();
           const multiGradeService = MultiGradeService.getInstance();
 
-          // 다중 급수가 설정되어 있으면 사용, 아니면 기존 단일 급수 사용
           const gradesToLoad =
             selectedGrades.length > 0
               ? selectedGrades
@@ -175,19 +160,16 @@ export const useAppStore = create<AppState>()(
                 ? [selectedGrade]
                 : ['8급'];
 
-          // 하위 호환성: selectedGrades가 비어있으면 selectedGrade 기반으로 설정
           if (selectedGrades.length === 0 && selectedGrade) {
             set({ selectedGrades: [selectedGrade] });
           } else if (selectedGrades.length === 0) {
-            // 둘 다 비어있으면 기본값 8급으로 설정
             set({ selectedGrades: ['8급'], selectedGrade: '8급' });
           }
 
-          // 다중 급수에서 랜덤 단어들을 가져와서 카드 스택 생성
           const availableCards =
             await multiGradeService.getRandomWordsFromMultipleGrades(
               gradesToLoad as HanjaGrade[],
-              50 // 초기 카드 스택 크기
+              50
             );
 
           if (availableCards.length === 0) {
@@ -196,13 +178,10 @@ export const useAppStore = create<AppState>()(
             return;
           }
 
-          // 첫 번째 카드를 랜덤으로 선택
           const randomStartIndex = Math.floor(
             Math.random() * availableCards.length
           );
           const firstCard = availableCards[randomStartIndex];
-
-          // 선택된 카드를 맨 앞으로 이동
           const reorderedCards = [
             firstCard,
             ...availableCards.filter(card => card.id !== firstCard.id),
@@ -221,7 +200,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      moveToNextCard: () =>
+      moveToNextCard() {
         set(state => {
           if (state.cardStack.length === 0) return state;
 
@@ -233,9 +212,10 @@ export const useAppStore = create<AppState>()(
             currentCardIndex: nextIndex,
             currentCard: nextCard || null,
           };
-        }),
+        });
+      },
 
-      moveToPreviousCard: () =>
+      moveToPreviousCard() {
         set(state => {
           if (state.cardStack.length === 0) return state;
 
@@ -249,11 +229,12 @@ export const useAppStore = create<AppState>()(
             currentCardIndex: prevIndex,
             currentCard: prevCard || null,
           };
-        }),
+        });
+      },
 
-      refillCardStack: async () => {
+      async refillCardStack() {
         const { selectedGrade } = get();
-        const gradeToLoad = selectedGrade || 8;
+        const gradeToLoad = selectedGrade || '8급';
         console.log(`🔄 ${gradeToLoad} 카드 스택 리필 중...`);
 
         try {
@@ -270,13 +251,11 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // 스와이프 액션들
-      swipeLeft: () => {
+      swipeLeft() {
         const { currentCard, cardHistory } = get();
         if (currentCard) {
           console.log(`👈 왼쪽 스와이프 - ${currentCard.word} 학습 완료`);
 
-          // 히스토리 매니저를 사용하여 히스토리 관리
           const limitedHistory = CardHistoryManager.addToHistory(
             cardHistory,
             currentCard,
@@ -284,7 +263,6 @@ export const useAppStore = create<AppState>()(
             10
           );
 
-          // 학습한 카드 ID 추가
           set(state => ({
             studiedCardIds: [...state.studiedCardIds, currentCard.id],
             cardHistory: limitedHistory,
@@ -295,12 +273,11 @@ export const useAppStore = create<AppState>()(
         get().moveToNextCard();
       },
 
-      swipeRight: () => {
+      swipeRight() {
         const { currentCard, cardHistory } = get();
         if (currentCard) {
           console.log(`👉 오른쪽 스와이프 - ${currentCard.word} 저장`);
 
-          // 히스토리 매니저를 사용하여 히스토리 관리
           const limitedHistory = CardHistoryManager.addToHistory(
             cardHistory,
             currentCard,
@@ -308,7 +285,6 @@ export const useAppStore = create<AppState>()(
             10
           );
 
-          // 저장한 카드 ID 추가
           set(state => ({
             savedCardIds: [...state.savedCardIds, currentCard.id],
             cardHistory: limitedHistory,
@@ -319,13 +295,8 @@ export const useAppStore = create<AppState>()(
         get().moveToNextCard();
       },
 
-      // 연관단어 스와이프 처리 (새로운 핵심 기능)
-      handleSwipeToRelatedWord: async (
-        currentCard: HanjaWordCard,
-        swipeDirection: 'left' | 'right'
-      ) => {
+      async handleSwipeToRelatedWord(currentCard, swipeDirection) {
         try {
-          // 0. 먼저 현재 카드가 북마크된 카드인지 확인하고 제거
           const { isWordBookmarked } = await import('../database/hanjaDB');
           const isCurrentCardBookmarked = await isWordBookmarked(
             currentCard.id
@@ -336,7 +307,7 @@ export const useAppStore = create<AppState>()(
               `📚 북마크된 카드 스와이프됨 - 스택에서 제거: ${currentCard.word}`
             );
             get().removeBookmarkedWordFromStack(currentCard.id);
-            return; // 북마크된 카드는 연관단어 로직 없이 바로 제거
+            return;
           }
 
           const {
@@ -346,7 +317,6 @@ export const useAppStore = create<AppState>()(
             recentCardWords,
           } = get();
 
-          // 1. 연관단어 검색 (최근 출현 단어들 제외)
           const relatedWord = await RelatedWordService.findRelatedWords(
             currentCard,
             swipeDirection,
@@ -357,7 +327,6 @@ export const useAppStore = create<AppState>()(
             }
           );
 
-          // 2. 히스토리에 현재 카드 추가
           const limitedHistory = CardHistoryManager.addToHistory(
             cardHistory,
             currentCard,
@@ -365,16 +334,13 @@ export const useAppStore = create<AppState>()(
             10
           );
 
-          // 3. 스와이프 방향에 따른 학습 상태 업데이트
           if (swipeDirection === 'left') {
-            // 왼쪽 스와이프: 학습 완료
             set(state => ({
               studiedCardIds: [...state.studiedCardIds, currentCard.id],
               cardHistory: limitedHistory,
               canGoBack: limitedHistory.length > 0,
             }));
           } else {
-            // 오른쪽 스와이프: 저장
             set(state => ({
               savedCardIds: [...state.savedCardIds, currentCard.id],
               cardHistory: limitedHistory,
@@ -382,9 +348,7 @@ export const useAppStore = create<AppState>()(
             }));
           }
 
-          // 4. 연관단어가 있으면 다음 카드로 설정, 없으면 기존 로직 사용
           if (relatedWord) {
-            // recentCardIds와 recentCardWords 업데이트 (최대 10개 유지)
             const updatedRecentIds = [
               currentCard.id,
               ...recentCardIds.slice(0, 9),
@@ -394,10 +358,8 @@ export const useAppStore = create<AppState>()(
               ...recentCardWords.slice(0, 9),
             ];
 
-            // 연관단어를 다음 카드로 설정
             set({
               currentCard: relatedWord,
-              // cardStack 맨 앞에 연관단어 삽입
               cardStack: [
                 relatedWord,
                 ...get().cardStack.slice(get().currentCardIndex + 1),
@@ -407,20 +369,16 @@ export const useAppStore = create<AppState>()(
               recentCardWords: updatedRecentWords,
             });
           } else {
-            // 연관단어가 없으면 기존 방식으로 다음 카드 이동
             get().moveToNextCard();
           }
         } catch (error) {
-          // 오류 발생 시 기존 방식으로 폴백
           get().moveToNextCard();
         }
       },
 
-      // 뒤로가기 액션 (개선된 버전)
-      goBackToPreviousCard: () => {
+      goBackToPreviousCard() {
         const { cardHistory, cardStack, reverseAnimationTrigger } = get();
 
-        // processGoBack 함수를 사용하여 뒤로가기 로직 처리
         const result = processGoBack(cardHistory, cardStack);
 
         console.log(result.message);
@@ -433,13 +391,11 @@ export const useAppStore = create<AppState>()(
           `⬅️ 이전 카드로 돌아가기: ${result.previousCard.word} (${result.swipeDirection} 스와이프로 사라짐)`
         );
 
-        // 역방향 애니메이션 트리거
         if (reverseAnimationTrigger && result.swipeDirection) {
           reverseAnimationTrigger(result.swipeDirection);
         }
 
-        // 상태 업데이트
-        const updateData: any = {
+        const updateData: Partial<AppState> = {
           currentCard: result.previousCard,
           cardHistory: result.newHistory,
           canGoBack: result.newHistory.length > 0,
@@ -453,16 +409,86 @@ export const useAppStore = create<AppState>()(
           updateData.currentCardIndex = result.newCardIndex;
         }
 
-        set(updateData);
+        set(updateData as AppState);
       },
 
-      // 역방향 애니메이션 트리거 콜백 설정
-      setReverseAnimationTrigger: callback => {
+      setReverseAnimationTrigger(callback) {
         set({ reverseAnimationTrigger: callback });
       },
+      setCustomUndoHandler(handler) {
+        set({ customUndoHandler: handler });
+      },
+      setCustomUndoAvailability(available) {
+        set({ isCustomUndoAvailable: available });
+      },
+      toggleIdiomBookmark(idiomId) {
+        set(state => {
+          const exists = state.bookmarkedIdiomIds.includes(idiomId);
+          const bookmarkedIdiomIds = exists
+            ? state.bookmarkedIdiomIds.filter(id => id !== idiomId)
+            : [...state.bookmarkedIdiomIds, idiomId];
+          return { bookmarkedIdiomIds };
+        });
+      },
 
-      // 학습 진도 관리
-      recordAnswer: (characterId, isCorrect) =>
+      removeBookmarkedWordFromStack(wordId) {
+        const { cardStack, currentCardIndex, currentCard } = get();
+
+        const filteredStack = cardStack.filter(card => card.id !== wordId);
+
+        if (filteredStack.length === cardStack.length) {
+          return;
+        }
+
+        console.log(`📚 북마크된 단어 실시간 제거: ${wordId}`);
+        console.log(
+          `📊 카드 스택: ${cardStack.length}개 → ${filteredStack.length}개`
+        );
+
+        const isCurrentCardRemoved = currentCard?.id === wordId;
+
+        if (isCurrentCardRemoved) {
+          if (filteredStack.length === 0) {
+            set({
+              cardStack: filteredStack,
+              currentCardIndex: 0,
+              currentCard: null,
+            });
+            console.log('📭 모든 카드가 제거되었습니다');
+          } else {
+            const newIndex = Math.min(
+              currentCardIndex,
+              filteredStack.length - 1
+            );
+            const newCurrentCard = filteredStack[newIndex];
+
+            set({
+              cardStack: filteredStack,
+              currentCardIndex: newIndex,
+              currentCard: newCurrentCard,
+            });
+            console.log(
+              `🔄 현재 카드 변경: ${newCurrentCard.word} (${newCurrentCard.pronunciation})`
+            );
+          }
+        } else {
+          let newIndex = currentCardIndex;
+
+          const removedCardIndex = cardStack.findIndex(
+            card => card.id === wordId
+          );
+          if (removedCardIndex !== -1 && removedCardIndex < currentCardIndex) {
+            newIndex = currentCardIndex - 1;
+          }
+
+          set({
+            cardStack: filteredStack,
+            currentCardIndex: newIndex,
+          });
+        }
+      },
+
+      recordAnswer(characterId, isCorrect) {
         set(state => {
           const existingProgress = state.studyProgress.find(
             p => p.characterId === characterId
@@ -483,24 +509,25 @@ export const useAppStore = create<AppState>()(
                   : p
               ),
             };
-          } else {
-            return {
-              studyProgress: [
-                ...state.studyProgress,
-                {
-                  characterId,
-                  isLearned: false,
-                  isFavorite: false,
-                  studiedAt: new Date(),
-                  correctCount: isCorrect ? 1 : 0,
-                  wrongCount: isCorrect ? 0 : 1,
-                },
-              ],
-            };
           }
-        }),
 
-      toggleFavorite: characterId =>
+          return {
+            studyProgress: [
+              ...state.studyProgress,
+              {
+                characterId,
+                isLearned: false,
+                isFavorite: false,
+                studiedAt: new Date(),
+                correctCount: isCorrect ? 1 : 0,
+                wrongCount: isCorrect ? 0 : 1,
+              },
+            ],
+          };
+        });
+      },
+
+      toggleFavorite(characterId) {
         set(state => {
           const progress = state.studyProgress.find(
             p => p.characterId === characterId
@@ -514,44 +541,83 @@ export const useAppStore = create<AppState>()(
                   : p
               ),
             };
-          } else {
-            return {
-              studyProgress: [
-                ...state.studyProgress,
-                {
-                  characterId,
-                  isLearned: false,
-                  isFavorite: true,
-                  studiedAt: new Date(),
-                  correctCount: 0,
-                  wrongCount: 0,
-                },
-              ],
-            };
           }
-        }),
 
-      markAsLearned: characterId =>
+          return {
+            studyProgress: [
+              ...state.studyProgress,
+              {
+                characterId,
+                isLearned: false,
+                isFavorite: true,
+                studiedAt: new Date(),
+                correctCount: 0,
+                wrongCount: 0,
+              },
+            ],
+          };
+        });
+      },
+
+      markAsLearned(characterId) {
         set(state => ({
           studyProgress: state.studyProgress.map(p =>
             p.characterId === characterId
               ? { ...p, isLearned: true, studiedAt: new Date() }
               : p
           ),
-        })),
+        }));
+      },
 
-      // 통계 함수들
-      getTotalLearned: () => {
+      toggleFavoriteCharacter(characterId) {
+        set(state => {
+          const newFavorites = new Set(state.favoriteCharacters);
+
+          if (newFavorites.has(characterId)) {
+            newFavorites.delete(characterId);
+            console.log(`💔 한자 즐겨찾기 해제: ${characterId}`);
+          } else {
+            newFavorites.add(characterId);
+            console.log(`💖 한자 즐겨찾기 추가: ${characterId}`);
+          }
+
+          return { favoriteCharacters: newFavorites };
+        });
+      },
+
+      toggleFavoriteWord(wordId) {
+        set(state => {
+          const newFavorites = new Set(state.favoriteWords);
+
+          if (newFavorites.has(wordId)) {
+            newFavorites.delete(wordId);
+          } else {
+            newFavorites.add(wordId);
+          }
+
+          return { favoriteWords: newFavorites };
+        });
+      },
+
+      isFavoriteCharacter(characterId) {
+        return get().favoriteCharacters.has(characterId);
+      },
+
+      isFavoriteWord(wordId) {
+        return get().favoriteWords.has(wordId);
+      },
+
+      getTotalLearned() {
         const { studyProgress } = get();
         return studyProgress.filter(p => p.isLearned).length;
       },
 
-      getFavoriteCount: () => {
+      getFavoriteCount() {
         const { studyProgress } = get();
         return studyProgress.filter(p => p.isFavorite).length;
       },
 
-      getAccuracyRate: characterId => {
+      getAccuracyRate(characterId) {
         const { studyProgress } = get();
 
         if (characterId) {
@@ -562,39 +628,43 @@ export const useAppStore = create<AppState>()(
 
           const total = progress.correctCount + progress.wrongCount;
           return total > 0 ? (progress.correctCount / total) * 100 : 0;
-        } else {
-          const totalCorrect = studyProgress.reduce(
-            (sum, p) => sum + p.correctCount,
-            0
-          );
-          const totalAttempts = studyProgress.reduce(
-            (sum, p) => sum + p.correctCount + p.wrongCount,
-            0
-          );
-          return totalAttempts > 0 ? (totalCorrect / totalAttempts) * 100 : 0;
         }
+
+        const totalCorrect = studyProgress.reduce(
+          (sum, p) => sum + p.correctCount,
+          0
+        );
+        const totalAttempts = studyProgress.reduce(
+          (sum, p) => sum + p.correctCount + p.wrongCount,
+          0
+        );
+        return totalAttempts > 0 ? (totalCorrect / totalAttempts) * 100 : 0;
       },
 
-      // 앱 초기화 (SQLite 전용 모드)
-      initializeApp: async () => {
+      async initializeApp() {
         const { isDbInitialized, selectedGrade } = get();
+
+        try {
+          await initializeDatabase();
+        } catch (error) {
+          console.error('❌ 데이터베이스 연결 실패:', error);
+          throw error;
+        }
 
         console.log('🔍 앱 초기화 상태 확인:', {
           isDbInitialized,
           selectedGrade,
         });
 
-        // 실제 데이터베이스 상태 검증 (상태만으로는 신뢰할 수 없음)
         if (isDbInitialized) {
           try {
             const testWords = await getWordsByGrade('8급');
             if (testWords.length > 0) {
               await get().initializeCardStack();
               return;
-            } else {
-              console.warn('⚠️ 데이터베이스에 데이터가 없음 - 재초기화 필요');
-              set({ isDbInitialized: false });
             }
+            console.warn('⚠️ 데이터베이스에 데이터가 없음 - 재초기화 필요');
+            set({ isDbInitialized: false });
           } catch (error) {
             console.warn('⚠️ 데이터베이스 검증 실패 - 재초기화 필요:', error);
             set({ isDbInitialized: false });
@@ -604,12 +674,8 @@ export const useAppStore = create<AppState>()(
         set({ isLoading: true });
 
         try {
-          // SQLite 강제 초기화
-          await initializeDatabase();
-
           await migrateDataToSQLite();
 
-          // 데이터베이스 검증
           const testWords = await getWordsByGrade('8급');
 
           if (testWords.length === 0) {
@@ -617,119 +683,21 @@ export const useAppStore = create<AppState>()(
           }
 
           set({ isDbInitialized: true });
-
-          // 카드 스택 초기화
           await get().initializeCardStack();
         } catch (error) {
           console.error('❌ 앱 초기화 실패:', error);
           set({ isDbInitialized: false });
-
-          // SQLite 실패시 앱 사용 불가
           throw new Error(`SQLite 초기화 실패: ${error}`);
         } finally {
           set({ isLoading: false });
         }
       },
 
-      // 급수 설정
-      setSelectedGrade: (grade: HanjaGrade | undefined) => {
-        const validGrade = grade || '8급'; // null이면 8급으로 설정
-        console.log(`🎯 급수 변경: ${validGrade}`);
-
-        set({ selectedGrade: validGrade });
-        // 급수 변경시 카드 스택 재초기화
-        get().initializeCardStack();
-      },
-
-      // 암기 상태 토글
-      toggleWordMemorized: async (wordId: string) => {
-        const { isDbInitialized } = get();
-
-        if (!isDbInitialized) {
-          console.error('❌ 데이터베이스가 초기화되지 않았습니다');
-          return;
-        }
-
-        try {
-          // 현재 상태 확인 후 토글 (단순화된 구현)
-          await dbUpdateWordMemorized(wordId, true); // 실제로는 현재 상태를 확인해야 함
-
-          // 카드 스택 새로고침
-          await get().refillCardStack();
-        } catch (error) {
-          console.error('❌ 암기 상태 업데이트 실패:', error);
-        }
-      },
-
-      // SQLite 전용 로드 함수
-      loadCards: async (
-        grade?: HanjaGrade | null
-      ): Promise<HanjaWordCard[]> => {
-        const { isDbInitialized } = get();
-
-        if (!isDbInitialized) {
-          console.error('❌ 데이터베이스가 초기화되지 않았습니다');
-          throw new Error('Database not initialized');
-        }
-
-        try {
-          // grade가 null이거나 undefined면 8급을 기본값으로 사용
-          const gradeToLoad = grade ?? 8;
-
-          if (
-            typeof gradeToLoad === 'number' &&
-            gradeToLoad >= 1 &&
-            gradeToLoad <= 8
-          ) {
-            const targetGrade = `${gradeToLoad}급` as HanjaGrade;
-            const { cachedWords } = get();
-
-            // 캐시된 데이터가 있으면 반환 (성능 최적화)
-            if (
-              cachedWords[targetGrade] &&
-              cachedWords[targetGrade].length > 0
-            ) {
-              console.log(
-                `🚀 ${targetGrade}급 캐시된 단어 ${cachedWords[targetGrade].length}개 반환`
-              );
-              return cachedWords[targetGrade];
-            }
-
-            const words = await getWordsByGrade(targetGrade);
-
-            // 캐시에 저장
-            set(state => ({
-              cachedWords: {
-                ...state.cachedWords,
-                [targetGrade]: words,
-              },
-            }));
-
-            return words;
-          } else {
-            // 전체 급수 로딩 (grade가 유효하지 않은 경우)
-            const allWords: HanjaWordCard[] = [];
-            for (let g = 8; g >= 1; g--) {
-              const words = await get().loadCards(`${g}급` as HanjaGrade);
-              allWords.push(...words);
-            }
-            return allWords;
-          }
-        } catch (error) {
-          console.error('❌ SQLite 데이터 로딩 실패:', error);
-          set({ isDbInitialized: false });
-          throw error;
-        }
-      },
-
-      // 데이터베이스 유틸리티 함수들
-      getWordsFromDb: async (grade?: HanjaGrade): Promise<HanjaWordCard[]> => {
+      async getWordsFromDb(grade) {
         return await get().loadCards(grade);
       },
 
-      getDbStatistics: async (): Promise<
-        Record<HanjaGrade, { total: number; memorized: number }>
-      > => {
+      async getDbStatistics() {
         try {
           return await getGradeStatistics();
         } catch (error) {
@@ -738,13 +706,11 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // 데이터베이스 강제 재초기화 (디버깅용)
-      forceReinitializeDatabase: async () => {
+      async forceReinitializeDatabase() {
         console.log('🔄 데이터베이스 강제 재초기화 시작...');
         set({ isLoading: true, isDbInitialized: false });
 
         try {
-          // 데이터베이스 재초기화
           console.log('📦 데이터베이스 재초기화 중...');
           await initializeDatabase();
           console.log('✅ 데이터베이스 초기화 완료');
@@ -753,7 +719,6 @@ export const useAppStore = create<AppState>()(
           await migrateDataToSQLite();
           console.log('✅ 데이터 재마이그레이션 완료');
 
-          // 데이터베이스 검증
           console.log('🔍 데이터베이스 재검증 중...');
           const testWords = await getWordsByGrade('8급');
 
@@ -764,7 +729,6 @@ export const useAppStore = create<AppState>()(
           set({ isDbInitialized: true });
           console.log('🎉 데이터베이스 재초기화 성공!');
 
-          // 캐시 초기화 후 카드 스택 재초기화
           get().clearCache();
           await get().initializeCardStack();
           console.log('✅ 앱 재초기화 완료');
@@ -777,171 +741,155 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // 캐시 초기화 함수 (성능 최적화)
-      clearCache: () => {
+      async loadCards(grade) {
+        const { isDbInitialized } = get();
+
+        if (!isDbInitialized) {
+          console.error('❌ 데이터베이스가 초기화되지 않았습니다');
+          throw new Error('Database not initialized');
+        }
+
+        const resolveGrade = (value?: HanjaGrade | number | null) => {
+          if (value === null || value === undefined) {
+            return '8급' as HanjaGrade;
+          }
+
+          if (typeof value === 'number') {
+            if (value >= 1 && value <= 8) {
+              return `${value}급` as HanjaGrade;
+            }
+            return null;
+          }
+
+          if (typeof value === 'string') {
+            const match = value.match(/^(\d)급$/);
+            if (match) {
+              const numericGrade = parseInt(match[1], 10);
+              if (numericGrade >= 1 && numericGrade <= 8) {
+                return `${numericGrade}급` as HanjaGrade;
+              }
+            }
+            return null;
+          }
+
+          return null;
+        };
+
+        const loadSingleGrade = async (gradeStr: HanjaGrade) => {
+          const { cachedWords } = get();
+
+          if (cachedWords[gradeStr] && cachedWords[gradeStr].length > 0) {
+            console.log(
+              `🚀 ${gradeStr} 캐시된 단어 ${cachedWords[gradeStr].length}개 반환`
+            );
+            return cachedWords[gradeStr];
+          }
+
+          const words = await getWordsByGrade(gradeStr);
+
+          set(state => ({
+            cachedWords: {
+              ...state.cachedWords,
+              [gradeStr]: words,
+            },
+          }));
+
+          return words;
+        };
+
+        try {
+          const normalizedGrade = resolveGrade(grade);
+
+          if (normalizedGrade) {
+            return await loadSingleGrade(normalizedGrade);
+          }
+
+          const allWords: HanjaWordCard[] = [];
+          for (let g = 8; g >= 1; g--) {
+            const gradeStr = `${g}급` as HanjaGrade;
+            const words = await loadSingleGrade(gradeStr);
+            allWords.push(...words);
+          }
+          return allWords;
+        } catch (error) {
+          console.error('❌ SQLite 데이터 로딩 실패:', error);
+          set({ isDbInitialized: false });
+          throw error;
+        }
+      },
+
+      clearCache() {
         console.log('🧹 캐시 초기화');
-        set({
-          cachedWords: {
-            '1급': [],
-            '2급': [],
-            '3급': [],
-            '4급': [],
-            '5급': [],
-            '6급': [],
-            '7급': [],
-            '8급': [],
-          },
-        });
+        set({ cachedWords: createEmptyCache() });
       },
 
-      // 설정 관련 액션들
-      setDarkMode: (isDark: boolean) => {
-        console.log(`🌙 다크 모드 ${isDark ? '활성화' : '비활성화'}`);
-        set({ isDarkMode: isDark });
+      setSelectedGrade(grade) {
+        const validGrade = grade || '8급';
+        console.log(`🎯 급수 변경: ${validGrade}`);
+
+        set({ selectedGrade: validGrade });
+        get().initializeCardStack();
       },
 
-      setLeftHanded: (isLeft: boolean) => {
-        console.log(`🤚 왼손잡이 모드 ${isLeft ? '활성화' : '비활성화'}`);
-        set({ isLeftHanded: isLeft });
-      },
-
-      // 즐겨찾기 액션들
-      toggleFavoriteCharacter: (characterId: string) => {
-        const { favoriteCharacters } = get();
-        const newFavorites = new Set(favoriteCharacters);
-
-        if (newFavorites.has(characterId)) {
-          newFavorites.delete(characterId);
-          console.log(`💔 한자 즐겨찾기 해제: ${characterId}`);
-        } else {
-          newFavorites.add(characterId);
-          console.log(`💖 한자 즐겨찾기 추가: ${characterId}`);
-        }
-
-        set({ favoriteCharacters: newFavorites });
-      },
-
-      toggleFavoriteWord: (wordId: string) => {
-        const { favoriteWords } = get();
-        const newFavorites = new Set(favoriteWords);
-
-        if (newFavorites.has(wordId)) {
-          newFavorites.delete(wordId);
-        } else {
-          newFavorites.add(wordId);
-        }
-
-        set({ favoriteWords: newFavorites });
-      },
-
-      isFavoriteCharacter: (characterId: string) => {
-        const { favoriteCharacters } = get();
-        return favoriteCharacters.has(characterId);
-      },
-
-      isFavoriteWord: (wordId: string) => {
-        const { favoriteWords } = get();
-        return favoriteWords.has(wordId);
-      },
-
-      // 다중 급수 설정
-      setSelectedGrades: (grades: HanjaGrade[]) => {
+      setSelectedGrades(grades) {
         console.log(`📚 선택된 급수: ${grades.join(', ')}`);
 
-        // 하위 호환성을 위해 selectedGrade도 업데이트 (첫 번째 급수 또는 null)
         const primaryGrade = grades.length > 0 ? grades[0] : undefined;
 
         set({
           selectedGrades: grades,
-          selectedGrade: primaryGrade,
+          selectedGrade: primaryGrade ?? '8급',
         });
       },
 
-      // 북마크된 단어를 현재 카드 스택에서 실시간 제거
-      removeBookmarkedWordFromStack: (wordId: string) => {
-        const { cardStack, currentCardIndex, currentCard } = get();
+      setDarkMode(isDark) {
+        console.log(`🌙 다크 모드 ${isDark ? '활성화' : '비활성화'}`);
+        set({ isDarkMode: isDark });
+      },
 
-        // 현재 스택에서 북마크된 단어 제거
-        const filteredStack = cardStack.filter(card => card.id !== wordId);
+      setLeftHanded(isLeft) {
+        console.log(`🤚 왼손잡이 모드 ${isLeft ? '활성화' : '비활성화'}`);
+        set({ isLeftHanded: isLeft });
+      },
 
-        if (filteredStack.length === cardStack.length) {
-          // 제거할 카드가 없었음 (이미 스택에 없음)
-          return;
-        }
+      incrementSwipeCount() {
+        set(state => ({ swipeCount: state.swipeCount + 1 }));
+      },
 
-        console.log(`📚 북마크된 단어 실시간 제거: ${wordId}`);
-        console.log(
-          `📊 카드 스택: ${cardStack.length}개 → ${filteredStack.length}개`
-        );
+      resetSwipeCount() {
+        set({ swipeCount: 0 });
+      },
 
-        // 현재 카드가 제거된 카드인지 확인
-        const isCurrentCardRemoved = currentCard?.id === wordId;
-
-        if (isCurrentCardRemoved) {
-          // 현재 카드가 제거된 경우
-          if (filteredStack.length === 0) {
-            // 모든 카드가 제거된 경우
-            set({
-              cardStack: filteredStack,
-              currentCardIndex: 0,
-              currentCard: null,
-            });
-            console.log('📭 모든 카드가 제거되었습니다');
-          } else {
-            // 다음 카드로 이동 (인덱스는 그대로, 배열이 줄어들었으므로)
-            const newIndex = Math.min(
-              currentCardIndex,
-              filteredStack.length - 1
-            );
-            const newCurrentCard = filteredStack[newIndex];
-
-            set({
-              cardStack: filteredStack,
-              currentCardIndex: newIndex,
-              currentCard: newCurrentCard,
-            });
-            console.log(
-              `🔄 현재 카드 변경: ${newCurrentCard.word} (${newCurrentCard.pronunciation})`
-            );
-          }
-        } else {
-          // 현재 카드가 아닌 다른 카드가 제거된 경우
-          let newIndex = currentCardIndex;
-
-          // 현재 인덱스 이전에 제거된 카드가 있으면 인덱스 조정
-          const removedCardIndex = cardStack.findIndex(
-            card => card.id === wordId
-          );
-          if (removedCardIndex !== -1 && removedCardIndex < currentCardIndex) {
-            newIndex = currentCardIndex - 1;
-          }
-
-          set({
-            cardStack: filteredStack,
-            currentCardIndex: newIndex,
-          });
-        }
+      setAdsRemoved(isRemoved) {
+        console.log(`🛒 광고 제거 ${isRemoved ? '활성화' : '비활성화'}`);
+        set({ isAdsRemoved: isRemoved });
       },
     }),
     {
       name: 'hanja-app-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: state => ({
-        studyProgress: state.studyProgress,
-        selectedGrade: state.selectedGrade,
-        selectedGrades: state.selectedGrades,
-        studyMode: state.studyMode,
-        isDarkMode: state.isDarkMode,
-        isLeftHanded: state.isLeftHanded,
-        isDbInitialized: state.isDbInitialized,
-        studiedCardIds: state.studiedCardIds,
-        savedCardIds: state.savedCardIds,
-        favoriteCharacters: Array.from(state.favoriteCharacters),
-        favoriteWords: Array.from(state.favoriteWords),
-      }),
+      partialize: state =>
+        ({
+          studyProgress: state.studyProgress,
+          selectedGrade: state.selectedGrade,
+          selectedGrades: state.selectedGrades,
+          studyMode: state.studyMode,
+          isDarkMode: state.isDarkMode,
+          isLeftHanded: state.isLeftHanded,
+          isDbInitialized: state.isDbInitialized,
+          studiedCardIds: state.studiedCardIds,
+          savedCardIds: state.savedCardIds,
+          favoriteCharacters: Array.from(
+            state.favoriteCharacters
+          ) as unknown as Set<string>,
+          favoriteWords: Array.from(
+            state.favoriteWords
+          ) as unknown as Set<string>,
+          swipeCount: state.swipeCount,
+          isAdsRemoved: state.isAdsRemoved,
+        }) as AppState,
       onRehydrateStorage: () => state => {
         if (state) {
-          // 배열로 저장된 즐겨찾기를 Set으로 복원
           if (Array.isArray((state as any).favoriteCharacters)) {
             state.favoriteCharacters = new Set(
               (state as any).favoriteCharacters
@@ -950,6 +898,7 @@ export const useAppStore = create<AppState>()(
           if (Array.isArray((state as any).favoriteWords)) {
             state.favoriteWords = new Set((state as any).favoriteWords);
           }
+          state.isDbInitialized = false;
         }
       },
     }

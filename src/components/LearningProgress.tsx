@@ -9,63 +9,72 @@ interface ProgressData {
   bookmarkedWords: number;
 }
 
-// 학습 현황 업데이트를 위한 전역 콜백 저장
 let globalRefreshCallback: (() => void) | null = null;
 
 export const LearningProgress: React.FC = () => {
-  const { selectedGrade, isDbInitialized } = useAppStore();
+  const { selectedGrade, selectedGrades, isDbInitialized, isLoading } =
+    useAppStore();
   const [progressData, setProgressData] = useState<ProgressData>({
     totalWords: 0,
     bookmarkedWords: 0,
   });
 
   const fetchProgressData = useCallback(async () => {
-    // 데이터베이스가 초기화되지 않았으면 데이터 조회하지 않음
-    if (!isDbInitialized) {
-      console.log('📊 데이터베이스 초기화 대기 중...');
+    if (isLoading || !isDbInitialized) {
       return;
     }
 
-    try {
-      // 현재 선택된 급수의 전체 단어 수
-      const allWords = await getWordsByGrade(selectedGrade);
-      const totalWords = allWords.length;
+    setTimeout(async () => {
+      try {
+        const gradesToCheck =
+          selectedGrades.length > 0 ? selectedGrades : [selectedGrade];
 
-      // 북마크된 단어 수 (같은 급수에서)
-      const bookmarkedWords = allWords.filter(word => word.isBookmarked).length;
+        let allWords: any[] = [];
 
-      setProgressData({
-        totalWords,
-        bookmarkedWords,
-      });
-    } catch (error) {
-      console.error('학습 현황 데이터 조회 실패:', error);
-    }
-  }, [selectedGrade, isDbInitialized]);
+        for (const grade of gradesToCheck) {
+          const words = await getWordsByGrade(grade);
+          allWords = allWords.concat(words);
+        }
+
+        const totalWords = allWords.length;
+        const bookmarkedWords = allWords.filter(
+          word => word.isBookmarked
+        ).length;
+
+        setProgressData({
+          totalWords,
+          bookmarkedWords,
+        });
+
+        if (gradesToCheck.length > 1) {
+          console.log(
+            `📊 학습 현황 업데이트: ${bookmarkedWords}/${totalWords} (급수: ${gradesToCheck.join(', ')})`
+          );
+        }
+      } catch (error) {
+        console.error('학습 현황 데이터 조회 실패:', error);
+        setProgressData({
+          totalWords: 0,
+          bookmarkedWords: 0,
+        });
+      }
+    }, 100);
+  }, [selectedGrade, selectedGrades, isDbInitialized, isLoading]);
 
   useEffect(() => {
-    fetchProgressData();
-  }, [fetchProgressData]);
-
-  // 데이터베이스 초기화 완료 시 자동으로 데이터 새로고침
-  useEffect(() => {
-    if (isDbInitialized) {
+    if (!isLoading && isDbInitialized) {
       fetchProgressData();
     }
-  }, [isDbInitialized, fetchProgressData]);
+  }, [isLoading, isDbInitialized, fetchProgressData]);
 
-  // 페이지 포커스 시 데이터 새로고침
   useFocusEffect(
     useCallback(() => {
       fetchProgressData();
     }, [fetchProgressData])
   );
 
-  // 전역 콜백 등록
   useEffect(() => {
     globalRefreshCallback = fetchProgressData;
-
-    // 컴포넌트 언마운트 시 콜백 제거
     return () => {
       globalRefreshCallback = null;
     };
@@ -89,26 +98,22 @@ export const LearningProgress: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 60, // 햄버거 메뉴 아래 위치
+    top: 60,
     left: 0,
     right: 0,
     alignItems: 'center',
     zIndex: 100,
   },
   progressContainer: {
-    backgroundColor: '#f8f6f2', // 오프 화이트
+    backgroundColor: '#f8f6f2',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    // 아이폰 아일랜드 노치 스타일
     minWidth: 80,
     alignItems: 'center',
   },
@@ -118,17 +123,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   bookmarkedCount: {
-    color: '#4CAF50', // 녹색
+    color: '#4CAF50',
   },
   separator: {
-    color: '#2c1810', // 먹색
+    color: '#2c1810',
   },
   totalCount: {
-    color: '#2c1810', // 먹색
+    color: '#2c1810',
   },
 });
 
-// 학습 현황 새로고침 함수 export
 export const refreshLearningProgress = () => {
   if (globalRefreshCallback) {
     globalRefreshCallback();

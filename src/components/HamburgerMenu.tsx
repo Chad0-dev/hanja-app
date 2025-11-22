@@ -42,21 +42,19 @@ export const HamburgerMenu: React.FC = () => {
     if (item.id === 'settings') {
       // 설정 페이지로 이동
       router.push('/(tabs)/settings');
+    } else if (item.id === 'store') {
+      // 상점 페이지로 이동
+      router.push('/(tabs)/store');
     } else if (item.id === 'help') {
       // 도움말 페이지로 이동
       router.push('/(tabs)/help');
-    } else if (item.id === 'store') {
-      // 상점 준비중 알럿 표시
-      Alert.alert('상점', '상점 기능은 준비 중 입니다.', [
-        { text: '확인', style: 'default' },
-      ]);
     } else if (item.id === 'hanja-quiz') {
       // 준비중 알럿 표시
       Alert.alert('알림', '한자 문제 기능은 준비 중 입니다.');
-    } else if (item.id === 'four-character-idiom') {
-      // 준비중 알럿 표시
-      Alert.alert('알림', '사자성어 기능은 준비 중 입니다.');
-    } else {
+  } else if (item.id === 'four-character-idiom') {
+      // 사자성어 페이지로 이동
+      router.push('/(tabs)/four-character-idiom');
+  } else {
       // 다른 메뉴 아이템들
       Alert.alert('알림', `${item.title} 기능은 준비 중입니다.`);
     }

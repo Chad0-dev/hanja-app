@@ -1,7 +1,10 @@
 import * as SQLite from 'expo-sqlite';
+import wordDataJson from '../data/wordData.json';
 import { characterData } from '../data/characterData';
-import { wordData } from '../data/wordData';
+import { HanjaWordCard } from '../types';
 import { initializeDatabase } from './hanjaDB';
+
+const wordData = wordDataJson as HanjaWordCard[];
 
 /**
  * 복잡한 의미 필드를 단순한 문자열로 변환
@@ -137,7 +140,7 @@ const insertWordsFromData = async (
   db: SQLite.SQLiteDatabase
 ): Promise<void> => {
   try {
-    console.log('📖 wordData.ts에서 완성 단어 데이터 로드 중...');
+    console.log('📖 wordData.json에서 완성 단어 데이터 로드 중...');
 
     const words = wordData;
     let insertedCount = 0;
@@ -164,7 +167,7 @@ const insertWordsFromData = async (
     }
 
     console.log(
-      `📚 wordData에서 로드된 완성 단어 ${insertedCount}개 삽입 완료`
+      `📚 wordData.json에서 로드된 완성 단어 ${insertedCount}개 삽입 완료`
     );
   } catch (error) {
     console.error('❌ 완성 단어 데이터 삽입 실패:', error);

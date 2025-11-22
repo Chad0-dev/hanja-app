@@ -1,7 +1,7 @@
+import { Platform } from 'react-native';
+
 // Google AdMob 관련 컴포넌트 및 설정
-// export { AdBanner } from './AdBanner'; // 네이티브 모듈 에러로 인해 주석 처리
 export { AdBannerSafe } from './AdBannerSafe';
-// export { AdMobConfig, AdUnitIds, getAdUnitId } from './AdMobConfig'; // 네이티브 모듈 에러로 인해 주석 처리
 
 // 임시로 AdUnitIds와 getAdUnitId만 별도 구현
 export const AdUnitIds = {
@@ -18,6 +18,13 @@ export const AdUnitIds = {
 } as const;
 
 export const getAdUnitId = (adType: 'banner'): string => {
-  const platform = require('react-native').Platform.OS as 'ios' | 'android';
+  const platform = Platform.OS as 'ios' | 'android';
   return AdUnitIds[platform][adType];
 };
+
+// 전면 광고 관련 exports
+export {
+  loadInterstitialAd,
+  showInterstitialAd,
+  useInterstitialAd,
+} from './InterstitialAd';

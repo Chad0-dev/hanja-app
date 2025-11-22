@@ -21,6 +21,12 @@ interface CardDeckProps {
   reverseDirection?: 'left' | 'right';
   /** 역방향 애니메이션 완료 콜백 */
   onReverseAnimationComplete?: () => void;
+  /** 하단 스와이프 인디케이터 표시 여부 */
+  showSwipeIndicators?: boolean;
+  /** 의미 텍스트 크기 조절 */
+  meaningTextVariant?: 'default' | 'compact';
+  /** 급수 배지 클릭 핸들러 (옵션) */
+  onGradePress?: () => void;
 }
 
 /**
@@ -39,6 +45,9 @@ export const CardDeck: React.FC<CardDeckProps> = ({
   shouldPlayReverseAnimation = false,
   reverseDirection = 'right',
   onReverseAnimationComplete,
+  showSwipeIndicators = true,
+  meaningTextVariant = 'default',
+  onGradePress,
 }) => {
   // 애니메이션 상태 및 로직을 훅으로 분리
   const animations = useCardAnimations(cards, {
@@ -104,6 +113,9 @@ export const CardDeck: React.FC<CardDeckProps> = ({
           onSwipeCancel={handleSwipeCancel}
           onFlipStart={handleFlipStart}
           onFlipEnd={handleFlipEnd}
+          showSwipeIndicators={showSwipeIndicators}
+          meaningTextVariant={meaningTextVariant}
+          onGradePress={onGradePress}
         />
       ))}
     </View>

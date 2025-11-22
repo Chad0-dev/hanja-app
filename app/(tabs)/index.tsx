@@ -5,6 +5,8 @@ import {
   HamburgerMenu,
   LearningProgress,
   getAdUnitId,
+  loadInterstitialAd,
+  showInterstitialAd,
 } from '@/src/components';
 import { useAppStore } from '@/src/stores/useAppStore';
 import React, { useEffect, useState } from 'react';
@@ -26,11 +28,14 @@ export default function HomeScreen() {
     isLoading,
     studiedCardIds,
     savedCardIds,
+    swipeCount,
+    isAdsRemoved,
     initializeCardStack,
     swipeLeft,
     swipeRight,
     handleSwipeToRelatedWord, // 새로운 연관단어 스와이프 함수
     setReverseAnimationTrigger,
+    incrementSwipeCount,
   } = useAppStore();
 
   // 역방향 애니메이션 트리거 콜백 설정 (스와이프 방향 포함)
@@ -40,6 +45,10 @@ export default function HomeScreen() {
       setShouldPlayReverse(true);
     });
   }, [setReverseAnimationTrigger]);
+
+  useEffect(() => {
+    loadInterstitialAd();
+  }, []);
 
   // 현재 카드부터 시작하는 카드 배열 생성 (CardDeck이 변화를 감지할 수 있도록)
   // 성능 최적화: 최대 3장만 생성 (CardDeck에서 2장만 사용하지만 여유분 포함)
@@ -81,9 +90,24 @@ export default function HomeScreen() {
     // 🐉 스와이프할 때마다 바로 드래곤 변경 (강제 업데이트)
     setForceUpdateDragon(prev => prev + 1);
 
-    setTimeout(() => {
+    // 📊 스와이프 카운터 증가
+    incrementSwipeCount();
+
+    setTimeout(async () => {
       if (currentCard) {
         handleSwipeToRelatedWord(currentCard, 'left');
+
+        // 📱 15번 스와이프마다 전면 광고 표시 (광고 제거가 비활성화된 경우에만)
+        if (!isAdsRemoved && (swipeCount + 1) % 15 === 0) {
+          console.log(`📱 ${swipeCount + 1}번째 스와이프 - 전면 광고 표시`);
+          try {
+            await showInterstitialAd();
+          } catch (error) {
+            console.error('📱 전면 광고 표시 실패:', error);
+          }
+        } else if (isAdsRemoved) {
+          console.log(`🛒 광고 제거 활성화됨 - 전면 광고 건너뜀`);
+        }
       } else {
         console.warn('⚠️ currentCard가 null입니다 - Left 스와이프 무시');
       }
@@ -100,9 +124,24 @@ export default function HomeScreen() {
     // 🐉 스와이프할 때마다 바로 드래곤 변경 (강제 업데이트)
     setForceUpdateDragon(prev => prev + 1);
 
-    setTimeout(() => {
+    // 📊 스와이프 카운터 증가
+    incrementSwipeCount();
+
+    setTimeout(async () => {
       if (currentCard) {
         handleSwipeToRelatedWord(currentCard, 'right');
+
+        // 📱 15번 스와이프마다 전면 광고 표시 (광고 제거가 비활성화된 경우에만)
+        if (!isAdsRemoved && (swipeCount + 1) % 15 === 0) {
+          console.log(`📱 ${swipeCount + 1}번째 스와이프 - 전면 광고 표시`);
+          try {
+            await showInterstitialAd();
+          } catch (error) {
+            console.error('📱 전면 광고 표시 실패:', error);
+          }
+        } else if (isAdsRemoved) {
+          console.log(`🛒 광고 제거 활성화됨 - 전면 광고 건너뜀`);
+        }
       } else {
         console.warn('⚠️ currentCard가 null입니다 - Right 스와이프 무시');
       }
@@ -145,6 +184,7 @@ export default function HomeScreen() {
                 shouldPlayReverseAnimation={shouldPlayReverse}
                 reverseDirection={reverseDirection}
                 onReverseAnimationComplete={() => setShouldPlayReverse(false)}
+                showSwipeIndicators
               />
 
               {/* Dragon 캐릭터 - 카드 변화에 따라 변함 */}
@@ -158,7 +198,7 @@ export default function HomeScreen() {
                 <Text style={styles.debugInfo}>
                   스택: {cardStack.length}장 | 현재: {currentCardIndex + 1}/
                   {cardStack.length} | 학습: {studiedCardIds?.length || 0}장 |
-                  저장: {savedCardIds?.length || 0}장
+                  저장: {savedCardIds?.length || 0}장 | 스와이프: {swipeCount}회
                 </Text>
               )}
             </>
@@ -166,8 +206,8 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* 하단 광고 배너 - 안전한 AdMob 배너 */}
-      <AdBannerSafe adUnitId={getAdUnitId('banner')} />
+      {/* 하단 광고 배너 - 안전한 AdMob 배너 (광고 제거가 비활성화된 경우에만) */}
+      {!isAdsRemoved && <AdBannerSafe adUnitId={getAdUnitId('banner')} />}
     </ImageBackground>
   );
 }

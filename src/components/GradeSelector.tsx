@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -30,6 +30,10 @@ export const GradeSelector: React.FC<GradeSelectorProps> = ({
   const [tempSelectedGrades, setTempSelectedGrades] = useState<HanjaGrade[]>(
     selectedGrades || []
   );
+
+  useEffect(() => {
+    setTempSelectedGrades(selectedGrades || []);
+  }, [selectedGrades]);
 
   const handleGradeToggle = (grade: HanjaGrade) => {
     const newGrades = tempSelectedGrades.includes(grade)

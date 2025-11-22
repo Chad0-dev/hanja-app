@@ -8,15 +8,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useColorScheme } from '../../src/hooks/useColorScheme';
 import { useAppStore } from '../../src/stores/useAppStore';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export default function SettingsScreen() {
-  const colorScheme = useColorScheme();
-  const { isDarkMode, setDarkMode, isLeftHanded, setLeftHanded, isAdsRemoved } =
-    useAppStore();
+export default function StoreScreen() {
+  const { isAdsRemoved, setAdsRemoved } = useAppStore();
 
   return (
     <ImageBackground
@@ -25,51 +22,31 @@ export default function SettingsScreen() {
       resizeMode="cover"
     >
       <View style={styles.container}>
-        {/* 족자 스타일 설정 카드 */}
+        {/* 상점 스타일 설정 카드 */}
         <View style={styles.scrollCard}>
-          <Text style={styles.cardTitle}>설정</Text>
+          <Text style={styles.cardTitle}>상점</Text>
 
           <View style={styles.settingSection}>
-            {/* 다크/라이트 모드 토글 */}
+            {/* 광고 제거 토글 */}
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
-                <Text style={styles.settingTitle}>다크 모드</Text>
+                <Text style={styles.settingTitle}>광고 제거</Text>
                 <Text style={styles.settingDescription}>
-                  어두운 테마로 변경 (준비 중)
+                  모든 광고를 제거하여 더 나은 학습 환경을 제공합니다
                 </Text>
               </View>
               <Switch
-                value={isDarkMode}
-                onValueChange={setDarkMode}
-                trackColor={{ false: '#d4d4d8', true: '#3b82f6' }}
-                thumbColor={isDarkMode ? '#ffffff' : '#ffffff'}
+                value={isAdsRemoved}
+                onValueChange={setAdsRemoved}
+                trackColor={{ false: '#d4d4d8', true: '#ef4444' }}
+                thumbColor={isAdsRemoved ? '#ffffff' : '#ffffff'}
                 ios_backgroundColor="#d4d4d8"
                 disabled={true}
               />
             </View>
-
-            {/* 구분선 */}
-            <View style={styles.divider} />
-
-            {/* 왼손/오른손 토글 */}
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingTitle}>왼손잡이 모드</Text>
-                <Text style={styles.settingDescription}>
-                  네비게이션 버튼 위치 조정
-                </Text>
-              </View>
-              <Switch
-                value={isLeftHanded}
-                onValueChange={setLeftHanded}
-                trackColor={{ false: '#d4d4d8', true: '#10b981' }}
-                thumbColor={isLeftHanded ? '#ffffff' : '#ffffff'}
-                ios_backgroundColor="#d4d4d8"
-              />
-            </View>
           </View>
 
-          <Text style={styles.tipText}>설정은 자동으로 저장됩니다</Text>
+          <Text style={styles.tipText}>상점 기능은 준비 중입니다</Text>
         </View>
       </View>
 

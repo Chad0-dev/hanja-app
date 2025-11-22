@@ -20,10 +20,6 @@ export const AdBannerSafe: React.FC<AdBannerSafeProps> = ({
   style,
   visible = true,
 }) => {
-  // visible이 false면 아무것도 렌더링하지 않음
-  if (!visible) {
-    return null;
-  }
   const [AdMobBanner, setAdMobBanner] =
     useState<React.ComponentType<any> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +27,12 @@ export const AdBannerSafe: React.FC<AdBannerSafeProps> = ({
 
   // AdMob 모듈 동적 로드 (EAS Build에서만)
   React.useEffect(() => {
+    if (!visible) {
+      setAdMobBanner(null);
+      setIsLoading(false);
+      return;
+    }
+
     const loadAdMobModule = async () => {
       // Development Build에서는 항상 목업 표시
       if (__DEV__) {
@@ -90,7 +92,11 @@ export const AdBannerSafe: React.FC<AdBannerSafeProps> = ({
     };
 
     loadAdMobModule();
-  }, [adUnitId]);
+  }, [adUnitId, visible]);
+
+  if (!visible) {
+    return null;
+  }
 
   // 로딩 중이거나 에러가 발생한 경우 목업 표시
   if (isLoading || hasError || !AdMobBanner) {

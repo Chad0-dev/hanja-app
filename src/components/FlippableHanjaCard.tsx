@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Dimensions,
   StyleSheet,
@@ -16,15 +16,47 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { isWordBookmarked, toggleWordBookmark } from '../database/hanjaDB';
 import { useGradeSelection } from '../hooks/useGradeSelection';
-import { HanjaWordCard } from '../types';
+import { useWordBookmark } from '../hooks/useWordBookmark';
+import { useAppStore } from '../stores/useAppStore';
+import { HanjaCharacter, HanjaWordCard } from '../types';
 import { GradeSelector } from './GradeSelector';
-import { refreshLearningProgress } from './LearningProgress';
 import { IconSymbol } from './ui/IconSymbol';
 
 const { width: screenWidth } = Dimensions.get('window');
 const SWIPE_THRESHOLD = screenWidth * 0.3; // 화면 너비의 30%
+
+const flattenMeaningValue = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap(flattenMeaningValue);
+  }
+  if (typeof value === 'string') {
+    return [value];
+  }
+  return [];
+};
+
+const normalizeCharacterMeaning = (rawMeaning: string): string => {
+  if (!rawMeaning) return '';
+
+  if (rawMeaning.includes('[[')) {
+    try {
+      const normalized = rawMeaning.replace(/'/g, '"');
+      const parsed = JSON.parse(normalized);
+      const flattened = flattenMeaningValue(parsed).filter(Boolean);
+      if (flattened.length > 0) {
+        return flattened.join(', ');
+      }
+    } catch (error) {
+      return rawMeaning
+        .replace(/[\[\]']/g, '')
+        .replace(/\s+,/g, ',')
+        .trim();
+    }
+  }
+
+  return rawMeaning;
+};
 
 interface FlippableHanjaCardProps {
   /** 한자 단어 카드 데이터 */
@@ -45,6 +77,12 @@ interface FlippableHanjaCardProps {
   cardStyle?: ViewStyle;
   /** 텍스트 숨기기 (배경 카드용) */
   hideText?: boolean;
+  /** 하단 스와이프 인디케이터 표시 여부 */
+  showSwipeIndicators?: boolean;
+  /** 의미 텍스트 크기 조절 */
+  meaningTextVariant?: 'default' | 'compact';
+  /** 급수 배지 커스텀 동작 */
+  onGradePress?: (() => void) | null;
 }
 
 export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
@@ -58,7 +96,11 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
     onFlipEnd,
     cardStyle,
     hideText = false,
+    showSwipeIndicators = true,
+    meaningTextVariant = 'default',
+    onGradePress,
   }) => {
+    const isLeftHanded = useAppStore(state => state.isLeftHanded);
     const {
       isGradeSelectorVisible,
       selectedGrades,
@@ -68,46 +110,15 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
       handleGradeConfirm,
     } = useGradeSelection();
     const [isFlipped, setIsFlipped] = useState(false);
-    const [isBookmarked, setIsBookmarked] = useState(false);
-    const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
+    const {
+      isBookmarked,
+      isBookmarkLoading,
+      toggleBookmark,
+    } = useWordBookmark(card.id);
 
-    // 컴포넌트 마운트 시 북마크 상태 로드
-    React.useEffect(() => {
-      const loadBookmarkStatus = async () => {
-        try {
-          const bookmarked = await isWordBookmarked(card.id);
-          setIsBookmarked(bookmarked);
-        } catch (error) {
-          console.error('북마크 상태 로드 실패:', error);
-        }
-      };
-
-      loadBookmarkStatus();
-    }, [card.id]);
-
-    // 북마크 토글 함수 (실제 DB 연동)
-    const toggleBookmark = async (event: any) => {
-      // 이벤트 전파 중지 (카드 뒤집기 방지)
+    const handleBookmarkPress = (event: any) => {
       event.stopPropagation();
-
-      if (isBookmarkLoading) return;
-
-      setIsBookmarkLoading(true);
-      try {
-        const newBookmarkState = await toggleWordBookmark(card.id);
-        setIsBookmarked(newBookmarkState);
-
-        // 학습 현황 실시간 업데이트
-        refreshLearningProgress();
-
-        console.log(
-          `📚 북마크 ${newBookmarkState ? '추가' : '제거'}: ${card.word}`
-        );
-      } catch (error) {
-        console.error('북마크 토글 실패:', error);
-      } finally {
-        setIsBookmarkLoading(false);
-      }
+      toggleBookmark();
     };
 
     // 제스처와 애니메이션을 위한 shared values - 메모리 최적화
@@ -349,6 +360,20 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
       );
     }
 
+    const hanjaFontSize = useMemo(() => {
+      const length = card.word?.length || 0;
+      if (length >= 4) return 68;
+      if (length === 3) return 80;
+      return 90;
+    }, [card.word]);
+
+    const badgePositionStyle = isLeftHanded
+      ? styles.badgeLeft
+      : styles.badgeRight;
+    const bookmarkPositionStyle = isLeftHanded
+      ? styles.bookmarkLeft
+      : styles.bookmarkRight;
+
     return (
       <>
         <GestureDetector gesture={panGesture}>
@@ -359,8 +384,8 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
               <View style={[styles.card, styles.frontCard]}>
                 {/* 급수 배지 - 오른쪽 상단 (클릭 가능) */}
                 <TouchableOpacity
-                  style={styles.gradeBadge}
-                  onPress={showGradeSelection}
+                  style={[styles.gradeBadge, badgePositionStyle]}
+                  onPress={onGradePress || showGradeSelection}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.gradeText}>
@@ -372,8 +397,8 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
 
                 {/* 북마크 아이콘 - 급수 배지 아래 */}
                 <TouchableOpacity
-                  style={styles.bookmarkIconInCard}
-                  onPress={toggleBookmark}
+                  style={[styles.bookmarkIconInCard, bookmarkPositionStyle]}
+                  onPress={handleBookmarkPress}
                   activeOpacity={0.7}
                 >
                   <IconSymbol
@@ -394,47 +419,21 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
                   onPress={flipCard}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.hanjaText}>{card.word}</Text>
+                  <Text style={[styles.hanjaText, { fontSize: hanjaFontSize }]}>
+                    {card.word}
+                  </Text>
                   <Text style={styles.tapHint}>탭하여 뒤집기</Text>
                 </TouchableOpacity>
 
                 {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
-                <Animated.View
-                  style={[
-                    styles.swipeIndicator,
-                    styles.leftSwipeIndicator,
-                    leftHighlightStyle,
-                  ]}
-                >
-                  <Animated.Text
-                    style={[styles.swipeIndicatorText, leftTextStyle]}
-                  >
-                    {card.characters[0]?.character} 연관단어
-                  </Animated.Text>
-                </Animated.View>
-
-                <Animated.View
-                  style={[
-                    styles.swipeIndicator,
-                    styles.rightSwipeIndicator,
-                    rightHighlightStyle,
-                  ]}
-                >
-                  <Animated.Text
-                    style={[styles.swipeIndicatorText, rightTextStyle]}
-                  >
-                    {card.characters[1]?.character ||
-                      card.characters[0]?.character}{' '}
-                    연관단어
-                  </Animated.Text>
-                </Animated.View>
+                {/* 연관단어 인디케이터 비활성화 (로직 재작업 전까지 숨김) */}
               </View>
             ) : (
               /* 뒷면 카드 - 발음, 뜻, 구성 한자 정보 */
               <View style={[styles.card, styles.backCard]}>
                 {/* 급수 배지 - 오른쪽 상단 (클릭 가능) */}
                 <TouchableOpacity
-                  style={styles.gradeBadge}
+                  style={[styles.gradeBadge, badgePositionStyle]}
                   onPress={showGradeSelection}
                   activeOpacity={0.7}
                 >
@@ -447,8 +446,8 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
 
                 {/* 북마크 아이콘 - 급수 배지 아래 */}
                 <TouchableOpacity
-                  style={styles.bookmarkIconInCard}
-                  onPress={toggleBookmark}
+                  style={[styles.bookmarkIconInCard, bookmarkPositionStyle]}
+                  onPress={handleBookmarkPress}
                   activeOpacity={0.7}
                 >
                   <IconSymbol
@@ -472,24 +471,36 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
                   <Text style={styles.pronunciationText}>
                     {card.pronunciation}
                   </Text>
-                  <Text style={styles.meaningText}>{card.meaning}</Text>
+                  <Text
+                    style={[
+                      styles.meaningText,
+                      meaningTextVariant === 'compact' &&
+                        styles.meaningTextCompact,
+                    ]}
+                  >
+                    {card.meaning}
+                  </Text>
 
                   {/* 구성 한자들 정보 */}
                   <View style={styles.charactersContainer}>
-                    <Text style={styles.charactersTitle}>구성 한자:</Text>
-                    {(() => {
+                    <Text style={styles.charactersTitle}>구성 한자</Text>
+                    <View style={styles.charactersGrid}>
+                      {(() => {
                       // 한자 순서를 단어 순서에 맞게 정렬
                       const wordChars = card.word.split('');
-                      const orderedChars = [];
+                      const orderedChars: HanjaCharacter[] = [];
+                      const usedIndexes = new Set<number>();
 
                       // 단어의 각 한자 순서대로 매칭
                       for (let i = 0; i < wordChars.length; i++) {
                         const wordChar = wordChars[i];
-                        const matchingChar = card.characters.find(
-                          c => c.character === wordChar
+                        const matchingIndex = card.characters.findIndex(
+                          (c, idx) =>
+                            c.character === wordChar && !usedIndexes.has(idx)
                         );
-                        if (matchingChar) {
-                          orderedChars.push(matchingChar);
+                        if (matchingIndex !== -1) {
+                          orderedChars.push(card.characters[matchingIndex]);
+                          usedIndexes.add(matchingIndex);
                         }
                       }
 
@@ -504,52 +515,27 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
                         }
                       });
 
-                      return orderedChars.map((char, index) => (
-                        <View key={char.id} style={styles.characterInfo}>
-                          <Text style={styles.characterText}>
-                            {char.character} {char.meaning} {char.pronunciation}
-                          </Text>
-                          <Text style={styles.characterDetails}>
-                            {char.strokeCount}획, 부수 {char.radical}
-                          </Text>
-                        </View>
-                      ));
-                    })()}
+                        return orderedChars.map((char, index) => (
+                          <View key={char.id} style={styles.characterInfo}>
+                            <Text style={styles.characterText}>
+                              {char.character}{' '}
+                              {normalizeCharacterMeaning(char.meaning)}{' '}
+                              {char.pronunciation}
+                            </Text>
+                            <Text style={styles.characterDetails}>
+                              {char.strokeCount}획, 부수 {char.radical}
+                            </Text>
+                          </View>
+                        ));
+                      })()}
+                    </View>
                   </View>
 
                   <Text style={styles.tapHint}>탭하여 뒤집기</Text>
                 </TouchableOpacity>
 
                 {/* 하단 연관단어 인디케이터들 - 하이라이트 애니메이션 */}
-                <Animated.View
-                  style={[
-                    styles.swipeIndicator,
-                    styles.leftSwipeIndicator,
-                    leftHighlightStyle,
-                  ]}
-                >
-                  <Animated.Text
-                    style={[styles.swipeIndicatorText, leftTextStyle]}
-                  >
-                    {card.characters[0]?.character} 연관단어
-                  </Animated.Text>
-                </Animated.View>
-
-                <Animated.View
-                  style={[
-                    styles.swipeIndicator,
-                    styles.rightSwipeIndicator,
-                    rightHighlightStyle,
-                  ]}
-                >
-                  <Animated.Text
-                    style={[styles.swipeIndicatorText, rightTextStyle]}
-                  >
-                    {card.characters[1]?.character ||
-                      card.characters[0]?.character}{' '}
-                    연관단어
-                  </Animated.Text>
-                </Animated.View>
+                {/* 연관단어 인디케이터 비활성화 (로직 재작업 전까지 숨김) */}
               </View>
             )}
           </Animated.View>
@@ -571,6 +557,7 @@ export const FlippableHanjaCard: React.FC<FlippableHanjaCardProps> = React.memo(
     return (
       prevProps.card.id === nextProps.card.id &&
       prevProps.hideText === nextProps.hideText &&
+      prevProps.showSwipeIndicators === nextProps.showSwipeIndicators &&
       JSON.stringify(prevProps.cardStyle) ===
         JSON.stringify(nextProps.cardStyle)
     );
@@ -611,7 +598,6 @@ const styles = StyleSheet.create({
   gradeBadge: {
     position: 'absolute',
     top: 15,
-    right: 15,
     backgroundColor: '#2c1810', // 먹색 (진한 갈색)
     borderRadius: 12,
     paddingHorizontal: 10,
@@ -625,6 +611,12 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 5,
     zIndex: 10, // 다른 요소들보다 위에 표시
+  },
+  badgeRight: {
+    right: 15,
+  },
+  badgeLeft: {
+    left: 15,
   },
   gradeText: {
     color: '#ffffff',
@@ -655,7 +647,6 @@ const styles = StyleSheet.create({
   bookmarkIconInCard: {
     position: 'absolute',
     top: 55, // 급수 배지 아래 (급수 배지 높이 + 마진)
-    right: 15,
     backgroundColor: 'rgba(248, 246, 242, 0.3)', // 연한 배경
     borderRadius: 10,
     paddingHorizontal: 8,
@@ -671,6 +662,12 @@ const styles = StyleSheet.create({
     zIndex: 9, // 급수 배지보다는 낮지만 카드 내용보다는 높게
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  bookmarkRight: {
+    right: 15,
+  },
+  bookmarkLeft: {
+    left: 15,
   },
   backCard: {
     backgroundColor: '#faf8f5', // 따뜻한 오프화이트
@@ -703,6 +700,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
+  meaningTextCompact: {
+    fontSize: 20,
+    lineHeight: 26,
+  },
   strokeText: {
     fontSize: 18,
     color: '#666',
@@ -715,7 +716,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
     width: '100%',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   charactersTitle: {
     fontSize: 16,
@@ -723,10 +724,19 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 10,
     textAlign: 'center',
+    width: '100%',
+  },
+  charactersGrid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   characterInfo: {
-    marginBottom: 8,
+    width: '48%',
+    marginBottom: 12,
     alignItems: 'center',
+    marginHorizontal: '1%',
   },
   characterText: {
     fontSize: 18,

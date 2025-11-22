@@ -1,6 +1,8 @@
 import { AdBannerSafe, getAdUnitId } from '@/src/components';
 import { AppColors } from '@/src/constants/AppColors';
-import { wordData } from '@/src/data/wordData';
+import { characterData } from '@/src/data/characterData';
+import { fourCharacterIdioms } from '@/src/data/fourCharacterIdioms';
+import wordDataJson from '@/src/data/wordData.json';
 import {
   getBookmarkedWordIds,
   toggleWordBookmark,
@@ -18,11 +20,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAppStore } from '@/src/stores/useAppStore';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 80) / 4;
+const IDIOM_CARD_WIDTH = (width - 80) / 3;
 
-type TabType = 'characters' | 'words';
+type TabType = 'characters' | 'words' | 'idioms';
+
+const wordData = wordDataJson as HanjaWordCard[];
 
 export default function WordbookScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('words');
@@ -35,8 +41,15 @@ export default function WordbookScreen() {
   const [bookmarkedWords, setBookmarkedWords] = useState<Set<string>>(
     new Set()
   );
+  const bookmarkedIdiomIds = useAppStore(state => state.bookmarkedIdiomIds);
+  const toggleIdiomBookmark = useAppStore(state => state.toggleIdiomBookmark);
 
   const grades: HanjaGrade[] = ['8급', '7급', '6급', '5급', '4급', '3급'];
+  const characterMap = React.useMemo(() => {
+    const map = new Map<string, HanjaCharacter>();
+    characterData.forEach(char => map.set(char.character, char));
+    return map;
+  }, []);
 
   // 북마크 상태 로드 (최적화된 버전)
   const loadBookmarkStates = async (wordList: HanjaWordCard[]) => {
@@ -123,6 +136,43 @@ export default function WordbookScreen() {
     }, [words])
   );
 
+  const filteredIdioms = React.useMemo(() => {
+    return fourCharacterIdioms
+      .filter(idiom => idiom.grade === selectedGrade)
+      .map(idiom => ({
+        ...idiom,
+        characters: idiom.characters.map((char, index) => {
+          const base = characterMap.get(char);
+          if (base) {
+            return {
+              ...base,
+              id: `${base.id}_${idiom.id}_${index}`,
+            };
+          }
+          return {
+            id: `custom_${idiom.id}_${index}`,
+            character: char,
+            pronunciation: '',
+            meaning: '',
+            strokeCount: 0,
+            radical: '',
+            radicalName: '',
+            radicalStrokes: 0,
+          };
+        }),
+      }));
+  }, [characterMap, selectedGrade]);
+
+  const filteredIdiomsWithSearch = React.useMemo(() => {
+    if (!searchQuery) return filteredIdioms;
+    const query = searchQuery.toLowerCase();
+    return filteredIdioms.filter(idiom =>
+      idiom.word.includes(query) ||
+      idiom.pronunciation.toLowerCase().includes(query) ||
+      idiom.meaning.toLowerCase().includes(query)
+    );
+  }, [filteredIdioms, searchQuery]);
+
   // 한자가 북마크된 단어에 포함되는지 확인
   const isCharacterBookmarked = (characterId: string): boolean => {
     return words.some(
@@ -207,32 +257,26 @@ export default function WordbookScreen() {
       <View style={styles.container}>
         {/* 탭 선택 */}
         <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'words' && styles.activeTab]}
-            onPress={() => setActiveTab('words')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'words' && styles.activeTabText,
-              ]}
+          {[
+            { key: 'words', label: '단어' },
+            { key: 'characters', label: '한자' },
+            { key: 'idioms', label: '사자성어' },
+          ].map(tab => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tab, activeTab === tab.key && styles.activeTab]}
+              onPress={() => setActiveTab(tab.key as TabType)}
             >
-              단어
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'characters' && styles.activeTab]}
-            onPress={() => setActiveTab('characters')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'characters' && styles.activeTabText,
-              ]}
-            >
-              한자
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === tab.key && styles.activeTabText,
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* 급수 선택 드롭다운과 검색창 */}
@@ -285,7 +329,13 @@ export default function WordbookScreen() {
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>데이터를 불러오는 중...</Text>
           </View>
-        ) : (activeTab === 'characters' ? characters : words).length === 0 ? (
+        ) : activeTab === 'idioms' && filteredIdiomsWithSearch.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>사자성어가 없습니다</Text>
+            <Text style={styles.emptySubText}>다른 급수를 선택해보세요</Text>
+          </View>
+        ) : (activeTab === 'characters' ? characters : words).length === 0 &&
+          activeTab !== 'idioms' ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
               {activeTab === 'characters'
@@ -298,6 +348,7 @@ export default function WordbookScreen() {
           </View>
         ) : activeTab === 'characters' ? (
           <FlatList
+            key="character-grid"
             data={characters.filter(item => {
               if (!searchQuery) return true;
               const query = searchQuery.toLowerCase();
@@ -315,8 +366,52 @@ export default function WordbookScreen() {
             refreshing={loading}
             onRefresh={() => loadData(selectedGrade)}
           />
+        ) : activeTab === 'idioms' ? (
+          <FlatList
+            key="idiom-grid"
+            data={filteredIdiomsWithSearch}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.idiomCard,
+                  bookmarkedIdiomIds.includes(item.id)
+                    ? styles.favoriteCard
+                    : styles.normalCard,
+                ]}
+                onPress={() => toggleIdiomBookmark(item.id)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.idiomWord,
+                    bookmarkedIdiomIds.includes(item.id) &&
+                      styles.favoriteText,
+                  ]}
+                >
+                  {item.word}
+                </Text>
+                <Text
+                  style={[
+                    styles.idiomPronunciation,
+                    bookmarkedIdiomIds.includes(item.id) &&
+                      styles.favoriteSubText,
+                  ]}
+                >
+                  {item.pronunciation}
+                </Text>
+              </TouchableOpacity>
+            )}
+            keyExtractor={item => item.id}
+            numColumns={3}
+            columnWrapperStyle={styles.idiomRow}
+            contentContainerStyle={styles.idiomGrid}
+            showsVerticalScrollIndicator={false}
+            refreshing={loading}
+            onRefresh={() => loadData(selectedGrade)}
+          />
         ) : (
           <FlatList
+            key="word-grid"
             data={words.filter(item => {
               if (!searchQuery) return true;
               const query = searchQuery.toLowerCase();
@@ -444,6 +539,40 @@ const styles = StyleSheet.create({
   gridContainer: {
     paddingBottom: 100,
     paddingHorizontal: 8,
+  },
+  idiomGrid: {
+    paddingBottom: 120,
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  idiomRow: {
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  idiomCard: {
+    width: IDIOM_CARD_WIDTH,
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    shadowColor: AppColors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  idiomWord: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: AppColors.ink,
+    marginBottom: 6,
+  },
+  idiomPronunciation: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: AppColors.inkLight,
+    marginBottom: 8,
   },
   card: {
     width: CARD_WIDTH,

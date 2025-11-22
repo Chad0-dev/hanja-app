@@ -23,6 +23,9 @@ interface DeckCardProps {
   onSwipeCancel?: () => void;
   onFlipStart?: () => void;
   onFlipEnd?: () => void;
+  showSwipeIndicators?: boolean;
+  meaningTextVariant?: 'default' | 'compact';
+  onGradePress?: (() => void) | null;
 }
 
 /**
@@ -45,6 +48,9 @@ export const DeckCard: React.FC<DeckCardProps> = React.memo(
     onSwipeCancel,
     onFlipStart,
     onFlipEnd,
+    showSwipeIndicators = true,
+    meaningTextVariant = 'default',
+    onGradePress,
   }) => {
     const animatedCardStyle = useAnimatedStyle(() => {
       const targetScale = 1 - index * 0.08;
@@ -123,6 +129,9 @@ export const DeckCard: React.FC<DeckCardProps> = React.memo(
           onSwipeCancel={isTopCard ? onSwipeCancel : undefined}
           onFlipStart={isTopCard ? onFlipStart : undefined}
           onFlipEnd={isTopCard ? onFlipEnd : undefined}
+          showSwipeIndicators={showSwipeIndicators}
+          meaningTextVariant={meaningTextVariant}
+          onGradePress={onGradePress || undefined}
         />
       </Animated.View>
     );
@@ -134,7 +143,10 @@ export const DeckCard: React.FC<DeckCardProps> = React.memo(
       prevProps.index === nextProps.index &&
       prevProps.isTopCard === nextProps.isTopCard &&
       prevProps.isFlipping === nextProps.isFlipping &&
-      prevProps.isPlayingReverse === nextProps.isPlayingReverse
+      prevProps.isPlayingReverse === nextProps.isPlayingReverse &&
+      prevProps.showSwipeIndicators === nextProps.showSwipeIndicators &&
+      prevProps.meaningTextVariant === nextProps.meaningTextVariant &&
+      prevProps.onGradePress === nextProps.onGradePress
     );
   }
 );

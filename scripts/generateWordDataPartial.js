@@ -111,11 +111,11 @@ const parseWordCSV = (filePath, grade, characterMap) => {
 
     return {
       id: `grade${grade}_word_${(index + 1).toString().padStart(3, '0')}`,
-      word: hanjaWord,
-      pronunciation: koreanWord.replace(/'/g, "\\'"),
-      meaning: meaning.replace(/'/g, "\\'"),
-      characters: characters,
-      grade: grade,
+      word: hanjaWord.replace(/\r/g, '').trim(),
+      pronunciation: koreanWord.replace(/\r/g, '').trim(),
+      meaning: parseMeaning(meaning.replace(/\r/g, '').trim()),
+      characters,
+      grade: `${grade}급`,
       isMemorized: false,
       relatedWords: {
         leftSwipe: [],
@@ -127,73 +127,8 @@ const parseWordCSV = (filePath, grade, characterMap) => {
   return words;
 };
 
-// TypeScript 파일을 생성하는 함수
-const generateTypeScriptFile = allWords => {
-  let content = `import { HanjaWordCard } from '../types';
-
-/**
- * CSV에서 생성된 완성 단어 데이터 (부분 매칭)
- * 이 파일은 scripts/generateWordDataPartial.js에 의해 자동 생성됩니다.
- * CSV 파일을 수정한 후 이 스크립트를 다시 실행하세요.
- */
-
-export const wordData: HanjaWordCard[] = [
-`;
-
-  allWords.forEach(word => {
-    content += `  {
-    id: '${word.id}',
-    word: '${word.word}',
-    pronunciation: '${word.pronunciation}',
-    meaning: '${word.meaning}',
-    characters: [
-`;
-
-    word.characters.forEach((char, charIndex) => {
-      content += `      {
-        id: '${char.id}',
-        character: '${char.character}',
-        pronunciation: '${char.pronunciation}',
-        meaning: ${JSON.stringify(char.meaning)},
-        strokeCount: ${char.strokeCount},
-        radical: '${char.radical}',
-        radicalName: '${char.radicalName}',
-        radicalStrokes: ${char.radicalStrokes},
-      },\n`;
-    });
-
-    content += `    ],
-    grade: ${word.grade},
-    isMemorized: ${word.isMemorized},
-    relatedWords: {
-      leftSwipe: ${JSON.stringify(word.relatedWords.leftSwipe)},
-      rightSwipe: ${JSON.stringify(word.relatedWords.rightSwipe)},
-    },
-  },
-`;
-  });
-
-  content += `];
-
-export const wordCountsByGrade = {
-`;
-
-  const counts = {};
-  allWords.forEach(word => {
-    counts[word.grade] = (counts[word.grade] || 0) + 1;
-  });
-
-  Object.keys(counts)
-    .sort((a, b) => parseInt(b) - parseInt(a))
-    .forEach(grade => {
-      content += `  grade${grade}: ${counts[grade]},\n`;
-    });
-
-  content += `};
-`;
-
-  return content;
-};
+// JSON 파일을 생성하는 함수
+const generateJsonFile = allWords => JSON.stringify(allWords, null, 2);
 
 const main = () => {
   console.log('🚀 부분 매칭 방식으로 완성 단어 데이터 생성 중...');
@@ -205,7 +140,7 @@ const main = () => {
   );
 
   const dataDir = path.join(__dirname, '../src/data');
-  const outputPath = path.join(__dirname, '../src/data/wordData.ts');
+  const outputPath = path.join(__dirname, '../src/data/wordData.json');
 
   const allWords = [];
   let totalMissingChars = 0;
@@ -241,10 +176,10 @@ const main = () => {
   );
 
   // TypeScript 파일 생성
-  const tsContent = generateTypeScriptFile(allWords);
-  fs.writeFileSync(outputPath, tsContent);
+  const jsonContent = generateJsonFile(allWords);
+  fs.writeFileSync(outputPath, jsonContent);
 
-  console.log(`✅ TypeScript 파일 생성 완료: ${outputPath}`);
+  console.log(`✅ JSON 파일 생성 완료: ${outputPath}`);
 
   // 급수별 통계 출력
   const counts = {};
@@ -256,7 +191,7 @@ const main = () => {
   Object.keys(counts)
     .sort((a, b) => parseInt(b) - parseInt(a))
     .forEach(grade => {
-      console.log(`   ${grade}급: ${counts[grade]}개`);
+      console.log(`   ${grade}: ${counts[grade]}개`);
     });
 
   console.log(`\n🎯 총 완성 단어 개수: ${allWords.length}개`);
